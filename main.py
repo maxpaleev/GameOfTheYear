@@ -2,6 +2,7 @@ import arcade
 from arcade.gui import UIManager, UIFlatButton, UITextureButton, UILabel, UIInputText, UITextArea, UISlider, UIDropdown, \
     UIMessageBox  # Это разные виджеты
 from arcade.gui.widgets.layout import UIAnchorLayout, UIBoxLayout
+from fight import CombatView
 
 # Константы
 SCREEN_WIDTH = 1000
@@ -53,12 +54,19 @@ class MenuView(arcade.View):
                                   font_size=16,
                                   text_color=arcade.color.WHITE)
         start_text.on_click = lambda event: self.window.show_view(self.window.combat_view)
+
+        def start_game(event):
+            self.window.combat_view.setup()
+            self.window.show_view(self.window.combat_view)
+
+        start_text.on_click = start_game
         settings_text = UIFlatButton(text='Настройки',
                                      font_size=16,
                                      text_color=arcade.color.WHITE)
         exit_text = UIFlatButton(text='Выход',
                                  font_size=16,
                                  text_color=arcade.color.WHITE)
+        exit_text.on_click = lambda event: arcade.exit()
 
         self.box_layout.add(label)
         self.box_layout.add(start_text)
@@ -71,40 +79,6 @@ class MenuView(arcade.View):
                                  arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
         self.manager.draw()
 
-
-class CombatView(arcade.View):
-    """ Режим PvZ """
-
-    def __init__(self):
-        super().__init__()
-        self.background = arcade.load_texture("resurses/pole.jpg")
-        self.boomboxes = arcade.SpriteList()
-        self.towers = arcade.SpriteList()
-        self.enemies = arcade.SpriteList()
-        self.bullets = arcade.SpriteList()
-        self.score = 0
-        self.setup()
-
-    def setup(self):
-        for i in range(1,6):
-            boombox = arcade.Sprite("resurses/boombox.png", 0.3)
-            boombox.center_x = 100
-            boombox.center_y = 100 * i
-            self.boomboxes.append(boombox)
-
-    def on_draw(self):
-        self.clear()
-        arcade.draw_texture_rect(self.background,
-                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
-        self.boomboxes.draw()
-
-    def on_update(self, delta_time):
-        pass
-
-    def end_battle(self):
-        explore = self.window.explore_view
-        explore.setup()
-        self.window.show_view(explore)
 
 
 class ExploreView(arcade.View):

@@ -1,0 +1,101 @@
+import arcade
+
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 600
+TILE_SIZE = 64
+GRID_ROWS = 5
+GRID_COLS = 9
+GRID_START_X = 200  # Отступ слева (место для Зомби/Тишины)
+GRID_START_Y = 100
+
+class Card(arcade.Sprite):
+    def __init__(self, unit_type, image, scale=1):
+        super().__init__(image, scale)
+        self.unit_type = unit_type
+
+class Unit(arcade.Sprite):
+    def __init__(self, unit_type, image, scale=1):
+        super().__init__(image, scale)
+        self.unit_type = unit_type
+
+class CombatView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        self.background = arcade.load_texture('resurses/pole.jpg')
+        self.cards_list = arcade.SpriteList()
+        self.towrs_list = arcade.SpriteList()
+
+        self.held_unit = None
+        self.held_unit_type = None
+
+        self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
+
+    def setup(self):
+        card_1 = Card('metronome', 'resurses/metronome.png', 0.2)
+        card_1.center_x = 80
+        card_1.center_y = 500
+        self.cards_list.append(card_1)
+
+        card_2 = Card('guitar', ':resources:images/items/gemBlue.png', 0.5)
+        card_2.center_x = 80
+        card_2.center_y = 400
+        self.cards_list.append(card_2)
+
+    def on_draw(self):
+        self.clear()
+        arcade.draw_texture_rect(self.background,
+                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
+
+        for row in range(GRID_ROWS):
+            for col in range(GRID_COLS):
+                x = GRID_START_X + col * TILE_SIZE
+                y = GRID_START_Y + row * TILE_SIZE
+                arcade.draw_rect_outline(arcade.rect.XYWH(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE), arcade.color.BLACK)
+
+        self.cards_list.draw()
+        self.towrs_list.draw()
+
+        if self.held_unit:
+            arcade.draw_sprite(self.held_unit)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        cards = arcade.get_sprites_at_point((x, y), self.cards_list)
+
+        if len(cards) > 0:
+            clicked_card = cards[0]
+            self.held_unit_type = clicked_card.unit_type
+
+            self.held_unit = arcade.Sprite(clicked_card.texture, scale=clicked_card.scale)
+            self.held_unit.alpha = 150
+            self.held_unit.center_x = x
+            self.held_unit.center_y = y
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        if self.held_unit:
+            self.held_unit.center_x = x
+            self.held_unit.center_y = y
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        if not self.held_unit:
+            return
+
+        col = int((x - GRID_START_X) // TILE_SIZE)
+        row = int((y - GRID_START_Y) // TILE_SIZE)
+
+        if 0 <= col < GRID_COLS and 0 <= row < GRID_ROWS:
+            if self.grid[row][col] == 0:
+
+                snap_x = GRID_START_X + col * TILE_SIZE + TILE_SIZE / 2
+                snap_y = GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2
+
+                new_tower = Unit(self.held_unit_type, self.held_unit.texture,self.held_unit.scale)
+                new_tower.center_x = snap_x
+                new_tower.center_y = snap_y
+                self.towrs_list.append(new_tower)
+                self.grid[row][col] = 1
+                print(f"Поставили {self.held_unit_type} в ячейку {row}, {col}")
+            else:
+                print("Клетка занята!")
+        else:
+            print("Мимо поля!")
+        self.held_unit = None
