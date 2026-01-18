@@ -1,4 +1,5 @@
 import arcade
+from pyglet.graphics import Batch
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
@@ -8,22 +9,29 @@ GRID_COLS = 9
 GRID_START_X = 200  # Отступ слева (место для Зомби/Тишины)
 GRID_START_Y = 100
 
+
 class Card(arcade.Sprite):
     def __init__(self, unit_type, image, scale=1):
         super().__init__(image, scale)
         self.unit_type = unit_type
+
 
 class Unit(arcade.Sprite):
     def __init__(self, unit_type, image, scale=1):
         super().__init__(image, scale)
         self.unit_type = unit_type
 
+
 class CombatView(arcade.View):
     def __init__(self):
         super().__init__()
         self.background = arcade.load_texture('resurses/pole.jpg')
         self.cards_list = arcade.SpriteList()
-        self.towrs_list = arcade.SpriteList()
+        self.towers_list = arcade.SpriteList()
+        self.batch = Batch()
+        self.metronome = 0
+        self.money = 0
+        self.timer = 0
 
         self.held_unit = None
         self.held_unit_type = None
@@ -31,7 +39,7 @@ class CombatView(arcade.View):
         self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
 
     def setup(self):
-        card_1 = Card('metronome', 'resurses/metronome.png', 0.2)
+        card_1 = Card('metronome', 'resurses/metronome.png', 0.1)
         card_1.center_x = 80
         card_1.center_y = 500
         self.cards_list.append(card_1)
@@ -40,6 +48,8 @@ class CombatView(arcade.View):
         card_2.center_x = 80
         card_2.center_y = 400
         self.cards_list.append(card_2)
+
+
 
     def on_draw(self):
         self.clear()
@@ -50,13 +60,17 @@ class CombatView(arcade.View):
             for col in range(GRID_COLS):
                 x = GRID_START_X + col * TILE_SIZE
                 y = GRID_START_Y + row * TILE_SIZE
-                arcade.draw_rect_outline(arcade.rect.XYWH(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE), arcade.color.BLACK)
+                arcade.draw_rect_outline(arcade.rect.XYWH(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE),
+                                         arcade.color.BLACK)
+
+        self.money_text = arcade.Text(f"Монеты: {self.money}", 800, 550, arcade.color.WHITE, 18, batch=self.batch)
 
         self.cards_list.draw()
-        self.towrs_list.draw()
+        self.towers_list.draw()
 
         if self.held_unit:
             arcade.draw_sprite(self.held_unit)
+        self.batch.draw()
 
     def on_mouse_press(self, x, y, button, modifiers):
         cards = arcade.get_sprites_at_point((x, y), self.cards_list)
@@ -88,10 +102,12 @@ class CombatView(arcade.View):
                 snap_x = GRID_START_X + col * TILE_SIZE + TILE_SIZE / 2
                 snap_y = GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2
 
-                new_tower = Unit(self.held_unit_type, self.held_unit.texture,self.held_unit.scale)
+                new_tower = Unit(self.held_unit_type, self.held_unit.texture, self.held_unit.scale)
                 new_tower.center_x = snap_x
                 new_tower.center_y = snap_y
-                self.towrs_list.append(new_tower)
+                self.towers_list.append(new_tower)
+                if self.held_unit_type == 'metronome':
+                    self.metronome += 1
                 self.grid[row][col] = 1
                 print(f"Поставили {self.held_unit_type} в ячейку {row}, {col}")
             else:
@@ -99,3 +115,11 @@ class CombatView(arcade.View):
         else:
             print("Мимо поля!")
         self.held_unit = None
+
+    def on_update(self, delta_time):
+        self.timer += delta_time
+        if self.metronome >= 1 and self.timer >= 5:
+            self.money += 10
+            self.money_text.text = f"Монеты: {self.money}"
+            self.timer = 0
+
