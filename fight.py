@@ -11,9 +11,10 @@ GRID_START_Y = 100
 
 
 class Card(arcade.Sprite):
-    def __init__(self, unit_type, image, scale=1):
+    def __init__(self, unit_type, image, price, scale=1):
         super().__init__(image, scale)
         self.unit_type = unit_type
+        self.price = price
 
 
 class Unit(arcade.Sprite):
@@ -30,7 +31,7 @@ class CombatView(arcade.View):
         self.towers_list = arcade.SpriteList()
         self.batch = Batch()
         self.metronome = 0
-        self.money = 0
+        self.money = 10
         self.timer = 0
 
         self.held_unit = None
@@ -39,12 +40,12 @@ class CombatView(arcade.View):
         self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
 
     def setup(self):
-        card_1 = Card('metronome', 'resurses/metronome.png', 0.1)
+        card_1 = Card('metronome', 'resurses/metronome.png', 10, 0.1)
         card_1.center_x = 80
         card_1.center_y = 500
         self.cards_list.append(card_1)
 
-        card_2 = Card('guitar', ':resources:images/items/gemBlue.png', 0.5)
+        card_2 = Card('guitar', ':resources:images/items/gemBlue.png', 50, 0.5)
         card_2.center_x = 80
         card_2.center_y = 400
         self.cards_list.append(card_2)
@@ -77,6 +78,9 @@ class CombatView(arcade.View):
 
         if len(cards) > 0:
             clicked_card = cards[0]
+            if clicked_card.price > self.money:
+                return
+            self.money -= clicked_card.price
             self.held_unit_type = clicked_card.unit_type
 
             self.held_unit = arcade.Sprite(clicked_card.texture, scale=clicked_card.scale)
@@ -119,7 +123,12 @@ class CombatView(arcade.View):
     def on_update(self, delta_time):
         self.timer += delta_time
         if self.metronome >= 1 and self.timer >= 5:
-            self.money += 10
+            self.money += 10 * self.metronome
             self.money_text.text = f"Монеты: {self.money}"
             self.timer = 0
+        for i in self.cards_list:
+            if self.money < i.price:
+                i.alpha = 100
+            else:
+                i.alpha = 255
 
