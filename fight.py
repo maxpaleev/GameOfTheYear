@@ -1,5 +1,6 @@
 import arcade
 from pyglet.graphics import Batch
+import math
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
@@ -25,10 +26,14 @@ class Strings(Unit):
         health = 100
         bullet_speed = 10
         texture = 'resurses/strings.png'
+        self.timer = 0
         super().__init__(unit_type, texture, price, health, scale=0.1)
 
     def clone(self):
         return Strings()
+
+
+
 
 
 class Metronome(Unit):
@@ -42,11 +47,35 @@ class Metronome(Unit):
     def clone(self):
         return Metronome()
 
-# class Bullet(arcade.Sprite):
-#     def __init__(self, image, start_x, start_y, scale=1):
-#         super().__init__(image, scale)
-#         self.speed = 10
-#         self.damage = 10
+
+class Bullet(arcade.Sprite):
+    def __init__(self, start_x, start_y, target_x, target_y, speed=800, damage=10):
+        super().__init__()
+        self.texture = arcade.load_texture(":resources:/images/space_shooter/laserBlue01.png")
+        self.center_x = start_x
+        self.center_y = start_y
+        self.speed = speed
+        self.damage = damage
+
+        # Рассчитываем направление
+        x_diff = target_x - start_x
+        y_diff = target_y - start_y
+        angle = math.atan2(y_diff, x_diff)
+        # И скорость
+        self.change_x = math.cos(angle) * speed
+        self.change_y = math.sin(angle) * speed
+        # Если текстура ориентирована по умолчанию вправо, то поворачиваем пулю в сторону цели
+        # Для другой ориентации нужно будет подправить угол
+        self.angle = math.degrees(-angle)  # Поворачиваем пулю
+
+    def update(self, delta_time):
+        # Удаляем пулю, если она ушла за экран
+        if (self.center_x < 0 or self.center_x > SCREEN_WIDTH or
+                self.center_y < 0 or self.center_y > SCREEN_HEIGHT):
+            self.remove_from_sprite_lists()
+
+        self.center_x += self.change_x * delta_time
+        self.center_y += self.change_y * delta_time
 
 
 
@@ -56,8 +85,12 @@ class CombatView(arcade.View):
         self.background = arcade.load_texture('resurses/pole.jpg')
         self.cards_list = arcade.SpriteList()
         self.towers_list = arcade.SpriteList()
+        self.bullets_list = arcade.SpriteList()
         self.batch = Batch()
+
         self.metronome = 0
+
+
         self.money = 100
         self.timer = 0
 
@@ -98,6 +131,7 @@ class CombatView(arcade.View):
         if self.held_unit:
             arcade.draw_sprite(self.held_unit)
         self.batch.draw()
+        self.bullets_list.draw()
 
     def on_mouse_press(self, x, y, button, modifiers):
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -161,12 +195,23 @@ class CombatView(arcade.View):
 
     def on_update(self, delta_time):
         self.timer += delta_time
-        if self.metronome >= 1 and self.timer >= 5:
-            self.money += 10 * self.metronome
-            self.money_text.text = f"Монеты: {self.money}"
+        self.bullets_list.update()
+        if self.timer >= 5:
+            if self.metronome >= 1:
+                self.money += 10 * self.metronome
+                self.money_text.text = f"Монеты: {self.money}"
+            for i in self.towers_list:
+                if i.unit_type == 'Strings':
+                    print(i)
+                    print('fire')
+                    bullet = Bullet(i.center_x, i.center_y, SCREEN_WIDTH, i.center_y)
+                    self.bullets_list.append(bullet)
+
             self.timer = 0
+
         for i in self.cards_list:
             if self.money < i.price:
                 i.alpha = 100
             else:
                 i.alpha = 255
+
