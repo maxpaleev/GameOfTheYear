@@ -75,7 +75,6 @@ class Bullet(arcade.Sprite):
         self.center_y += self.change_y * delta_time
 
 
-
 class CombatView(arcade.View):
     def __init__(self):
         super().__init__()
@@ -86,7 +85,6 @@ class CombatView(arcade.View):
         self.batch = Batch()
 
         self.metronome = 0
-
 
         self.money = 100
         self.timer = 0
@@ -211,4 +209,3 @@ class CombatView(arcade.View):
                 i.alpha = 100
             else:
                 i.alpha = 255
-
