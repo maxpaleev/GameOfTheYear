@@ -10,30 +10,44 @@ GRID_START_X = 200  # Отступ слева (место для Зомби/Ти
 GRID_START_Y = 100
 
 
-
-
 class Unit(arcade.Sprite):
-    def __init__(self, unit_type, image, scale=1):
+    def __init__(self, unit_type, image, price=0, health=100, scale=1):
         super().__init__(image, scale)
         self.unit_type = unit_type
+        self.price = price
+        self.health = health
+
 
 class Strings(Unit):
     def __init__(self):
-        self.price = 50
-        self.unit_type = 'Strings'
-        self.health = 100
-        self.bullet_speed = 10
+        price = 50
+        unit_type = 'Strings'
+        health = 100
+        bullet_speed = 10
         texture = 'resurses/strings.png'
-        super().__init__(self.unit_type, texture, scale=0.1)
+        super().__init__(unit_type, texture, price, health, scale=0.1)
+
+    def clone(self):
+        return Strings()
+
 
 class Metronome(Unit):
     def __init__(self):
-        self.price = 10
-        self.unit_type = 'Metronome'
-        self.health = 100
-        self.bullet_speed = 10
+        price = 10
+        unit_type = 'Metronome'
+        health = 100
         image = 'resurses/metronome.png'
-        super().__init__(self.unit_type, image, scale=0.1)
+        super().__init__(unit_type, image, price, health, scale=0.1)
+
+    def clone(self):
+        return Metronome()
+
+# class Bullet(arcade.Sprite):
+#     def __init__(self, image, start_x, start_y, scale=1):
+#         super().__init__(image, scale)
+#         self.speed = 10
+#         self.damage = 10
+
 
 
 class CombatView(arcade.View):
@@ -63,8 +77,6 @@ class CombatView(arcade.View):
         card_2.center_x = 80
         card_2.center_y = 400
         self.cards_list.append(card_2)
-
-
 
     def on_draw(self):
         self.clear()
@@ -96,9 +108,7 @@ class CombatView(arcade.View):
                 if clicked_card.price > self.money:
                     return
 
-                self.held_unit_type = clicked_card.unit_type
-                self.held_unit_price = clicked_card.price
-                self.held_unit = arcade.Sprite(clicked_card.texture, scale=clicked_card.scale)
+                self.held_unit = clicked_card.clone()
                 self.held_unit.alpha = 150
                 self.held_unit.center_x = x
                 self.held_unit.center_y = y
@@ -127,25 +137,27 @@ class CombatView(arcade.View):
         row = int((y - GRID_START_Y) // TILE_SIZE)
 
         if 0 <= col < GRID_COLS and 0 <= row < GRID_ROWS:
-            if self.grid[row][col] == 0 and self.held_unit_price <= self.money:
+            if self.grid[row][col] == 0 and self.held_unit.price <= self.money:
 
                 snap_x = GRID_START_X + col * TILE_SIZE + TILE_SIZE / 2
                 snap_y = GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2
 
-                new_tower = Unit(self.held_unit_type, self.held_unit.texture, self.held_unit.scale)
+                new_tower = self.held_unit.clone()
                 new_tower.center_x = snap_x
                 new_tower.center_y = snap_y
                 self.towers_list.append(new_tower)
-                if self.held_unit_type == 'Metronome':
+                if self.held_unit.unit_type == 'Metronome':
                     self.metronome += 1
                 self.grid[row][col] = 1
-                print(f"Поставили {self.held_unit_type} в ячейку {row}, {col}")
-                self.money -= self.held_unit_price
+                print(f"Поставили {self.held_unit.unit_type} в ячейку {row}, {col}")
+                self.money -= self.held_unit.price
+
             else:
                 print("Клетка занята!")
         else:
             print("Мимо поля!")
         self.held_unit = None
+        print(self.towers_list)
 
     def on_update(self, delta_time):
         self.timer += delta_time
@@ -158,4 +170,3 @@ class CombatView(arcade.View):
                 i.alpha = 100
             else:
                 i.alpha = 255
-
