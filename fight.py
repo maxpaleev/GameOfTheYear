@@ -33,9 +33,6 @@ class Strings(Unit):
         return Strings()
 
 
-
-
-
 class Metronome(Unit):
     def __init__(self):
         price = 10
@@ -50,8 +47,8 @@ class Metronome(Unit):
 
 class Bullet(arcade.Sprite):
     def __init__(self, start_x, start_y, target_x, target_y, speed=800, damage=10):
-        super().__init__()
-        self.texture = arcade.load_texture(":resources:/images/space_shooter/laserBlue01.png")
+        super().__init__(scale=0.1)
+        self.texture = arcade.load_texture("resurses/note.png")
         self.center_x = start_x
         self.center_y = start_y
         self.speed = speed
@@ -200,15 +197,15 @@ class CombatView(arcade.View):
             if self.metronome >= 1:
                 self.money += 10 * self.metronome
                 self.money_text.text = f"Монеты: {self.money}"
-            for i in self.towers_list:
-                if i.unit_type == 'Strings':
-                    print(i)
-                    print('fire')
+            self.timer = 0
+        for i in self.towers_list:
+            if i.unit_type == 'Strings':
+                i.timer += delta_time
+                if i.timer >= 5:
+                    # print('fire')
                     bullet = Bullet(i.center_x, i.center_y, SCREEN_WIDTH, i.center_y)
                     self.bullets_list.append(bullet)
-
-            self.timer = 0
-
+                    i.timer = 0
         for i in self.cards_list:
             if self.money < i.price:
                 i.alpha = 100
