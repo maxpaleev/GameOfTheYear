@@ -1,3 +1,5 @@
+import random
+
 import arcade
 from pyglet.graphics import Batch
 import math
@@ -21,13 +23,14 @@ class Unit(arcade.Sprite):
 
 class Strings(Unit):
     def __init__(self):
-        price = 50
-        unit_type = 'Strings'
-        health = 100
-        bullet_speed = 10
+        self.price = 50
+        self.unit_type = 'Strings'
+        self.health = 100
+        self.bullet_speed = 1000
+        self.bullet_damage = 100
         texture = 'resurses/strings.png'
         self.timer = 0
-        super().__init__(unit_type, texture, price, health, scale=0.1)
+        super().__init__(self.unit_type, texture, self.price, self.health, scale=0.1)
 
     def clone(self):
         return Strings()
@@ -43,6 +46,20 @@ class Metronome(Unit):
 
     def clone(self):
         return Metronome()
+
+
+class Ghost(Unit):
+    def __init__(self):
+        unit_type = 'Ghost'
+        health = 10
+        image = 'resurses/ghost.png'
+        super().__init__(unit_type, image, health, scale=0.2)
+
+    def update(self, delta_time):
+        if self.center_x < 0 or self.center_x > SCREEN_WIDTH:
+            self.remove_from_sprite_lists()
+        self.center_x -= 50 * delta_time
+
 
 
 class Bullet(arcade.Sprite):
@@ -78,15 +95,18 @@ class Bullet(arcade.Sprite):
 class CombatView(arcade.View):
     def __init__(self):
         super().__init__()
+        self.money_timer = 0
         self.background = arcade.load_texture('resurses/pole.jpg')
         self.cards_list = arcade.SpriteList()
         self.towers_list = arcade.SpriteList()
         self.bullets_list = arcade.SpriteList()
+        self.enemies_list = arcade.SpriteList()
         self.batch = Batch()
 
         self.metronome = 0
 
         self.money = 100
+        self.money_label = arcade.Text(f"Монеты: {self.money}", 800, 550, arcade.color.WHITE, 18, batch=self.batch)
         self.timer = 0
 
         self.held_unit = None
@@ -118,8 +138,6 @@ class CombatView(arcade.View):
                 arcade.draw_rect_outline(arcade.rect.XYWH(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE),
                                          arcade.color.BLACK)
 
-        self.money_text = arcade.Text(f"Монеты: {self.money}", 800, 550, arcade.color.WHITE, 18, batch=self.batch)
-
         self.cards_list.draw()
         self.towers_list.draw()
 
@@ -127,6 +145,7 @@ class CombatView(arcade.View):
             arcade.draw_sprite(self.held_unit)
         self.batch.draw()
         self.bullets_list.draw()
+        self.enemies_list.draw()
 
     def on_mouse_press(self, x, y, button, modifiers):
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -189,19 +208,34 @@ class CombatView(arcade.View):
         print(self.towers_list)
 
     def on_update(self, delta_time):
+        self.money_label.text = f"Монеты: {self.money}"
+        self.money_timer += delta_time
         self.timer += delta_time
         self.bullets_list.update()
-        if self.timer >= 5:
+        self.enemies_list.update()
+        if self.money_timer >= 5:
             if self.metronome >= 1:
                 self.money += 10 * self.metronome
-                self.money_text.text = f"Монеты: {self.money}"
+                self.money_label.text = f"Монеты: {self.money}"
+            self.money_timer = 0
+
+        elif self.timer >= 10:
+            start_x = TILE_SIZE * 13
+            start_y = TILE_SIZE * random.randint(1, 4)
+            ghost = Ghost()
+            ghost.center_x = start_x
+            ghost.center_y = start_y
+            self.enemies_list.append(ghost)
+            print('ghost')
             self.timer = 0
+
+
         for i in self.towers_list:
             if i.unit_type == 'Strings':
                 i.timer += delta_time
                 if i.timer >= 5:
                     # print('fire')
-                    bullet = Bullet(i.center_x, i.center_y, SCREEN_WIDTH, i.center_y)
+                    bullet = Bullet(i.center_x, i.center_y, SCREEN_WIDTH, i.center_y, i.bullet_speed, i.bullet_damage)
                     self.bullets_list.append(bullet)
                     i.timer = 0
         for i in self.cards_list:
@@ -209,3 +243,19 @@ class CombatView(arcade.View):
                 i.alpha = 100
             else:
                 i.alpha = 255
+
+
+        for bullet in self.bullets_list:
+            enimes = arcade.check_for_collision_with_list(bullet, self.enemies_list)
+            if enimes:
+                bullet.remove_from_sprite_lists()
+                for enemy in enimes:
+                    if enemy.health > 0:
+                        enemy.health -= bullet.damage
+                        if enemy.health <= 0:
+                            enemy.remove_from_sprite_lists()
+                            self.money += 10
+                            print(f'{enemy.unit_type} убит')
+                            self.money_label.text = f"Монеты: {self.money}"
+
+
