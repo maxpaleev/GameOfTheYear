@@ -20,6 +20,14 @@ class Unit(arcade.Sprite):
         self.price = price
         self.health = health
 
+class Enemy(arcade.Sprite):
+    def __init__(self, unit_type, image, damage=0, coaldown=1, health=100, scale=1):
+        super().__init__(image, scale)
+        self.unit_type = unit_type
+        self.damage = damage
+        self.health = health
+        self.coaldown = coaldown
+
 
 class Strings(Unit):
     def __init__(self):
@@ -48,12 +56,13 @@ class Metronome(Unit):
         return Metronome()
 
 
-class Ghost(Unit):
+class Ghost(Enemy):
     def __init__(self):
         unit_type = 'Ghost'
         health = 10
+        damage = 50
         image = 'resurses/ghost.png'
-        super().__init__(unit_type, image, health, scale=0.2)
+        super().__init__(unit_type, image, damage, 2, health, scale=0.2)
 
     def update(self, delta_time):
         if self.center_x < 0 or self.center_x > SCREEN_WIDTH:
@@ -257,5 +266,24 @@ class CombatView(arcade.View):
                             self.money += 10
                             print(f'{enemy.unit_type} убит')
                             self.money_label.text = f"Монеты: {self.money}"
+
+        for enemy in self.enemies_list:
+            towers = arcade.check_for_collision_with_list(enemy, self.towers_list)
+            if towers:
+                for tower in towers:
+                    if tower.health > 0 and enemy.coaldown <= 0:
+                        tower.health -= enemy.damage
+                        enemy.center_x = tower.center_x
+                    elif tower.health > 0 and enemy.coaldown > 0:
+                        enemy.coaldown -= delta_time
+                        enemy.center_x = tower.center_x
+                    if tower.health <= 0:
+                        if tower.unit_type == 'Metronome':
+                            self.metronome -= 1
+                        tower.remove_from_sprite_lists()
+                        print(f'{tower.unit_type} убит')
+
+
+
 
 
