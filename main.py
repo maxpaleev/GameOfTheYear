@@ -3,6 +3,7 @@ from arcade.gui import UIManager, UIFlatButton, UITextureButton, UILabel, UIInpu
     UIMessageBox  # Это разные виджеты
 from arcade.gui.widgets.layout import UIAnchorLayout, UIBoxLayout
 from fight import CombatView
+from city import City
 
 # Константы
 SCREEN_WIDTH = 1000
@@ -24,7 +25,7 @@ class GameWindow(arcade.Window):
         # Инициализация "Видов"
         self.menu_view = MenuView()
         self.combat_view = CombatView()  # PvZ режим
-        self.explore_view = ExploreView()  # Stardew режим
+        self.explore_view = City()  # Stardew режим
 
     def setup(self):
         self.show_view(self.menu_view)
@@ -53,11 +54,10 @@ class MenuView(arcade.View):
         start_text = UIFlatButton(text='Начать',
                                   font_size=16,
                                   text_color=arcade.color.WHITE)
-        start_text.on_click = lambda event: self.window.show_view(self.window.combat_view)
 
         def start_game(event):
             self.window.combat_view.setup()
-            self.window.show_view(self.window.combat_view)
+            self.window.show_view(self.window.explore_view)
 
         start_text.on_click = start_game
         settings_text = UIFlatButton(text='Настройки',
@@ -81,17 +81,17 @@ class MenuView(arcade.View):
 
 
 
-class ExploreView(arcade.View):
-    """ Режим Stardew (Город) """
-
-    def setup(self):
-        pass
-
-    def on_draw(self):
-        self.clear()
-
-    def on_key_press(self, key, modifiers):
-        pass
+# class ExploreView(arcade.View):
+#     """ Режим Stardew (Город) """
+#
+#     def setup(self):
+#         pass
+#
+#     def on_draw(self):
+#         self.clear()
+#
+#     def on_key_press(self, key, modifiers):
+#         pass
 
 
 # Запуск
