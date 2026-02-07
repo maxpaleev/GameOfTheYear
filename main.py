@@ -56,7 +56,7 @@ class MenuView(arcade.View):
                                   text_color=arcade.color.WHITE)
 
         def start_game(event):
-            self.window.combat_view.setup()
+            self.window.explore_view.setup()
             self.window.show_view(self.window.explore_view)
 
         start_text.on_click = start_game
