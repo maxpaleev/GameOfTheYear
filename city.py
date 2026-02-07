@@ -1,4 +1,6 @@
 import arcade
+import json
+from pyglet.graphics import Batch
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
@@ -11,6 +13,13 @@ DEAD_ZONE_H = int(SCREEN_HEIGHT * 0.35)
 
 CAMERA_LERP = 0.15
 
+
+def load_dialogues():
+    with open("resurses/dialogues.json", "r", encoding="utf-8") as file:
+        return json.load(file)
+
+# Загружаем всё в одну переменную
+ALL_DIALOGUES = load_dialogues()
 
 class Player(arcade.Sprite):
     def __init__(self):
@@ -45,18 +54,17 @@ class Player(arcade.Sprite):
 
 
 class NPC(arcade.Sprite):
-    def __init__(self, unite_type, image, scale=1):
+    def __init__(self, unite_type, image, dialogue_script, scale=1):
         super().__init__(image, scale)
         self.unite_type = unite_type
-
-    def dialogue(self):
-        pass
-
+        self.dialogue_script = dialogue_script
+        self.dialogue_started = False
 
 
 class Granma(NPC):
     def __init__(self):
-        super().__init__("Granma", ":resources:/images/animated_characters/male_person/malePerson_idle.png")
+        script = ALL_DIALOGUES["granma_quest"]
+        super().__init__("Granma", ":resources:/images/animated_characters/male_person/malePerson_idle.png", script)
         self.center_x = SCREEN_WIDTH // 2 + 100
         self.center_y = SCREEN_HEIGHT // 2 + 100
 
@@ -67,8 +75,36 @@ class City(arcade.View):
         self.background = arcade.load_texture('resurses/city.jpg')
 
         self.world_camera = arcade.camera.Camera2D()
+        self.gui_camera = arcade.camera.Camera2D()
         self.world_width = world_width
         self.world_height = world_height
+
+        self.is_dialogue_active = False
+        self.current_dialogue = None
+        self.dialogue_index = 0
+
+        self.batch = Batch()
+
+        self.text_object_name = arcade.Text(
+            text="",
+            x=70, y=110,
+            color=arcade.color.GOLD, font_size=18, bold=True,
+            batch=self.batch
+        )
+
+        self.text_object_text = arcade.Text(
+            text="",
+            x=70, y=80,
+            color=arcade.color.WHITE, font_size=14,
+            batch=self.batch
+        )
+
+        self.text_next = arcade.Text(
+            text='Нажми [SPACE] для продолжения',
+            x=700, y=40,
+            color=arcade.color.GRAY, font_size=10,
+            batch=self.batch
+        )
 
     def setup(self):
         self.player_list = arcade.SpriteList()
@@ -84,14 +120,26 @@ class City(arcade.View):
 
     def on_draw(self):
         self.clear()
+        self.world_camera.use()
         arcade.draw_texture_rect(self.background,
                                  arcade.rect.XYWH(world_width // 2, world_height // 2, world_width, world_height))
-
-        self.world_camera.use()
         self.player_list.draw()
-        self.NPC_list.draw()  # Отрисовываем игрока
+        self.NPC_list.draw()
+
+        self.gui_camera.use()
+
+        if self.is_dialogue_active:
+            arcade.draw_lrbt_rectangle_filled(50, 950, 20, 150, arcade.color.BLACK_OLIVE)
+            arcade.draw_lrbt_rectangle_outline(50, 950, 20, 150, arcade.color.WHITE, 2)
+
+            line = self.current_dialogue[self.dialogue_index]
+            self.text_object_name.text = line["name"]
+            self.text_object_text.text = line["text"]
+            self.batch.draw()
 
     def on_update(self, delta_time):
+        if self.is_dialogue_active:
+            return
         self.player_list.update(delta_time, self.keys_pressed)
         cam_x, cam_y = self.world_camera.position
         dz_left = cam_x - DEAD_ZONE_W // 2
@@ -124,12 +172,28 @@ class City(arcade.View):
 
         for npc in self.NPC_list:
             if arcade.check_for_collision(self.player, npc):
-                npc.dialogue()
+                if not npc.dialogue_started:
+                    self.start_dialogue(npc.dialogue_script)
+                    npc.dialogue_started = True
                 break
+            else:
+                npc.dialogue_started = False
 
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
 
+        if self.is_dialogue_active:
+            if key == arcade.key.SPACE:
+                self.dialogue_index += 1
+                if self.dialogue_index >= len(self.current_dialogue):
+                    self.is_dialogue_active = False
+            return
+
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
+
+    def start_dialogue(self, dialogue_list):
+        self.current_dialogue = dialogue_list
+        self.dialogue_index = 0
+        self.is_dialogue_active = True
