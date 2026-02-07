@@ -1,6 +1,7 @@
 import random
 import arcade
 import math
+from city import City
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
@@ -81,11 +82,13 @@ class CombatView(arcade.View):
         self.towers_list = arcade.SpriteList()
         self.bullets_list = arcade.SpriteList()
         self.enemies_list = arcade.SpriteList()
+        self.window.city = City()
 
         self.money = 100
         self.metronome_count = 0
         self.money_timer = 0
         self.spawn_timer = 0
+
 
         self.held_unit = None
         self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
@@ -172,6 +175,10 @@ class CombatView(arcade.View):
     def on_update(self, delta_time):
         self.money_label.text = f"Монеты: {self.money}"
 
+        if self.money > 500:
+            self.window.city_view = City()
+            self.window.city_view.setup()
+            self.window.show_view(self.window.city_view)
         # Списки обновляются сами
         self.bullets_list.update()
         self.enemies_list.update()

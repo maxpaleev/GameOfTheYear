@@ -2,6 +2,7 @@ import arcade
 import json
 from pyglet.graphics import Batch
 
+
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 
@@ -187,6 +188,11 @@ class City(arcade.View):
                 self.dialogue_index += 1
                 if self.dialogue_index >= len(self.current_dialogue):
                     self.is_dialogue_active = False
+
+                    from fight import CombatView
+                    self.window.combat_view = CombatView()
+                    self.window.combat_view.setup()
+                    self.window.show_view(self.window.combat_view)
             return
 
     def on_key_release(self, key, modifiers):
