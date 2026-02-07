@@ -44,6 +44,23 @@ class Player(arcade.Sprite):
         self.center_y = max(self.height / 2, min(world_height - self.height / 2, self.center_y))
 
 
+class NPC(arcade.Sprite):
+    def __init__(self, unite_type, image, scale=1):
+        super().__init__(image, scale)
+        self.unite_type = unite_type
+
+    def dialogue(self):
+        pass
+
+
+
+class Granma(NPC):
+    def __init__(self):
+        super().__init__("Granma", ":resources:/images/animated_characters/male_person/malePerson_idle.png")
+        self.center_x = SCREEN_WIDTH // 2 + 100
+        self.center_y = SCREEN_HEIGHT // 2 + 100
+
+
 class City(arcade.View):
     def __init__(self):
         super().__init__()
@@ -55,8 +72,13 @@ class City(arcade.View):
 
     def setup(self):
         self.player_list = arcade.SpriteList()
+        self.NPC_list = arcade.SpriteList()
+
         self.player = Player()
         self.player_list.append(self.player)
+
+        self.granma = Granma()
+        self.NPC_list.append(self.granma)
 
         self.keys_pressed = set()
 
@@ -66,7 +88,8 @@ class City(arcade.View):
                                  arcade.rect.XYWH(world_width // 2, world_height // 2, world_width, world_height))
 
         self.world_camera.use()
-        self.player_list.draw()  # Отрисовываем игрока
+        self.player_list.draw()
+        self.NPC_list.draw()  # Отрисовываем игрока
 
     def on_update(self, delta_time):
         self.player_list.update(delta_time, self.keys_pressed)
@@ -99,9 +122,13 @@ class City(arcade.View):
 
         self.world_camera.position = (self.cam_target[0], self.cam_target[1])
 
+        for npc in self.NPC_list:
+            if arcade.check_for_collision(self.player, npc):
+                npc.dialogue()
+                break
+
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
-
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
