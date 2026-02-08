@@ -80,20 +80,6 @@ class MenuView(arcade.View):
         self.manager.draw()
 
 
-
-# class ExploreView(arcade.View):
-#     """ Режим Stardew (Город) """
-#
-#     def setup(self):
-#         pass
-#
-#     def on_draw(self):
-#         self.clear()
-#
-#     def on_key_press(self, key, modifiers):
-#         pass
-
-
 # Запуск
 def main():
     window = GameWindow()
