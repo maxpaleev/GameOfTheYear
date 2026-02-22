@@ -1,3 +1,5 @@
+import enum
+
 import arcade
 import json
 from pyglet.graphics import Batch
@@ -22,14 +24,27 @@ def load_dialogues():
 # Загружаем всё в одну переменную
 ALL_DIALOGUES = load_dialogues()
 
+class FaceDirection(enum.Enum):
+    LEFT = 0
+    RIGHT = 1
+
 class Player(arcade.Sprite):
     def __init__(self):
-        super().__init__()
-
-        self.texture = arcade.load_texture(":resources:/images/animated_characters/male_person/malePerson_idle.png")
+        super().__init__(scale=0.1)
+        self.texture = arcade.load_texture('resurses/hero_r.png')
         self.speed = 300
         self.center_x = SCREEN_WIDTH // 2
         self.center_y = SCREEN_HEIGHT // 2
+
+        self.face_direction = FaceDirection.RIGHT
+        self.texture_r = arcade.load_texture('resurses/hero_r.png')
+        self.texture_l = arcade.load_texture('resurses/hero_l.png')
+
+    def update_animation(self, delta_time: float = 1 / 60):
+        if self.face_direction == FaceDirection.RIGHT:
+            self.texture = self.texture_r
+        else:
+            self.texture = self.texture_l
 
     def update(self, delta_time, keys_pressed):
         dx, dy = 0, 0
@@ -49,6 +64,11 @@ class Player(arcade.Sprite):
 
         self.center_x += dx
         self.center_y += dy
+
+        if dx < 0:
+            self.face_direction = FaceDirection.LEFT
+        elif dx > 0:
+            self.face_direction = FaceDirection.RIGHT
 
         self.center_x = max(self.width / 2, min(world_width - self.width / 2, self.center_x))
         self.center_y = max(self.height / 2, min(world_height - self.height / 2, self.center_y))
@@ -139,6 +159,7 @@ class City(arcade.View):
             self.batch.draw()
 
     def on_update(self, delta_time):
+        self.player_list.update_animation()
         if self.is_dialogue_active:
             return
         self.player_list.update(delta_time, self.keys_pressed)
