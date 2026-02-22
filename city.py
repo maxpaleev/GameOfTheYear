@@ -118,6 +118,21 @@ class Governor(NPC):
         self.center_y = SCREEN_HEIGHT // 2 + 60
 
 
+class Speaker(arcade.Sprite):
+    def __init__(self, x, y, sound_object, max_distance=1000):
+        super().__init__(scale=0.2)
+        self.texture = arcade.load_texture('resurses/speaker.png')
+        self.center_x = x
+        self.center_y = y
+        self.max_distance = max_distance
+
+        self.sound = sound_object
+        self.player = None
+
+    def play(self):
+        self.player = arcade.play_sound(self.sound, loop=True, volume=0)
+
+
 class City(arcade.View):
     def __init__(self):
         super().__init__()
@@ -159,6 +174,7 @@ class City(arcade.View):
     def setup(self):
         self.player_list = arcade.SpriteList()
         self.NPC_list = arcade.SpriteList()
+        self.speakers_list = arcade.SpriteList()
 
         self.player = Player()
         self.player_list.append(self.player)
@@ -167,6 +183,14 @@ class City(arcade.View):
         self.NPC_list.append(Military())
         self.NPC_list.append(Mechanic())
         self.NPC_list.append(Governor())
+        musik = arcade.load_sound('resurses/ost.mp3')
+
+        self.speaker_1 = Speaker(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 + 150, musik)
+        self.speaker_2 = Speaker(SCREEN_WIDTH // 2 - 400, SCREEN_HEIGHT // 2 + 50, musik)
+        self.speaker_1.play()
+        self.speaker_2.play()
+        self.speakers_list.append(self.speaker_1)
+        self.speakers_list.append(self.speaker_2)
         self.keys_pressed = set()
 
     def on_draw(self):
@@ -176,6 +200,7 @@ class City(arcade.View):
                                  arcade.rect.XYWH(world_width // 2, world_height // 2, world_width, world_height))
         self.player_list.draw()
         self.NPC_list.draw()
+        self.speakers_list.draw()
 
         self.gui_camera.use()
 
@@ -232,6 +257,13 @@ class City(arcade.View):
                 break
             else:
                 npc.dialogue_started = False
+        for speaker in self.speakers_list:
+            dist = arcade.get_distance_between_sprites(self.player, speaker)
+
+            vol = 1 - dist / speaker.max_distance
+            vol = max(0, min(1, vol))
+            if speaker.player:
+                speaker.player.volume = vol
 
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
@@ -257,4 +289,3 @@ class City(arcade.View):
         self.current_dialogue = dialogue_list
         self.dialogue_index = 0
         self.is_dialogue_active = True
-
