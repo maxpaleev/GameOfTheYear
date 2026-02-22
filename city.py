@@ -4,12 +4,11 @@ import arcade
 import json
 from pyglet.graphics import Batch
 
-
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 
-world_width = 4032
-world_height = 2688
+world_width = 2000
+world_height = 1200
 
 DEAD_ZONE_W = int(SCREEN_WIDTH * 0.35)
 DEAD_ZONE_H = int(SCREEN_HEIGHT * 0.35)
@@ -21,12 +20,15 @@ def load_dialogues():
     with open("resurses/dialogues.json", "r", encoding="utf-8") as file:
         return json.load(file)
 
+
 # Загружаем всё в одну переменную
 ALL_DIALOGUES = load_dialogues()
+
 
 class FaceDirection(enum.Enum):
     LEFT = 0
     RIGHT = 1
+
 
 class Player(arcade.Sprite):
     def __init__(self):
@@ -56,6 +58,8 @@ class Player(arcade.Sprite):
             dy += self.speed * delta_time
         if arcade.key.DOWN in keys_pressed or arcade.key.S in keys_pressed:
             dy -= self.speed * delta_time
+        if arcade.key.F in keys_pressed:
+            print(self.center_x, self.center_y)
 
         if dx != 0 and dy != 0:
             factor = 0.7071
@@ -85,15 +89,39 @@ class NPC(arcade.Sprite):
 class Granma(NPC):
     def __init__(self):
         script = ALL_DIALOGUES["granma_quest"]
-        super().__init__("Granma", ":resources:/images/animated_characters/male_person/malePerson_idle.png", script)
-        self.center_x = SCREEN_WIDTH // 2 + 100
+        super().__init__("Granma", "resurses/grandma.png", script, scale=0.1)
+        self.center_x = SCREEN_WIDTH // 2 - 100
+        self.center_y = SCREEN_HEIGHT // 2 + 150
+
+
+class Military(NPC):
+    def __init__(self):
+        script = ALL_DIALOGUES["military_quest"]
+        super().__init__("Military", 'resurses/military.jpg', script, scale=0.2)
+        self.center_x = SCREEN_WIDTH // 2 + 1100
+        self.center_y = SCREEN_HEIGHT // 2 + 300
+
+
+class Mechanic(NPC):
+    def __init__(self):
+        script = ALL_DIALOGUES["mechanic_quest"]
+        super().__init__("Mechanic", 'resurses/mechanic.png', script, scale=0.2)
+        self.center_x = SCREEN_WIDTH // 2 + 700
         self.center_y = SCREEN_HEIGHT // 2 + 100
+
+
+class Governor(NPC):
+    def __init__(self):
+        script = ALL_DIALOGUES["governor_quest"]
+        super().__init__("Governor", 'resurses/governor.png', script, scale=0.6)
+        self.center_x = SCREEN_WIDTH // 2 - 250
+        self.center_y = SCREEN_HEIGHT // 2 + 60
 
 
 class City(arcade.View):
     def __init__(self):
         super().__init__()
-        self.background = arcade.load_texture('resurses/city.jpg')
+        self.background = arcade.load_texture('resurses/map.jpg')
 
         self.world_camera = arcade.camera.Camera2D()
         self.gui_camera = arcade.camera.Camera2D()
@@ -103,6 +131,7 @@ class City(arcade.View):
         self.is_dialogue_active = False
         self.current_dialogue = None
         self.dialogue_index = 0
+        self.next_lvl = False
 
         self.batch = Batch()
 
@@ -134,9 +163,10 @@ class City(arcade.View):
         self.player = Player()
         self.player_list.append(self.player)
 
-        self.granma = Granma()
-        self.NPC_list.append(self.granma)
-
+        self.NPC_list.append(Granma())
+        self.NPC_list.append(Military())
+        self.NPC_list.append(Mechanic())
+        self.NPC_list.append(Governor())
         self.keys_pressed = set()
 
     def on_draw(self):
@@ -197,6 +227,8 @@ class City(arcade.View):
                 if not npc.dialogue_started:
                     self.start_dialogue(npc.dialogue_script)
                     npc.dialogue_started = True
+                    if npc.unite_type == "Military":
+                        self.next_lvl = True
                 break
             else:
                 npc.dialogue_started = False
@@ -209,11 +241,12 @@ class City(arcade.View):
                 self.dialogue_index += 1
                 if self.dialogue_index >= len(self.current_dialogue):
                     self.is_dialogue_active = False
-
-                    from fight import CombatView
-                    self.window.combat_view = CombatView()
-                    self.window.combat_view.setup()
-                    self.window.show_view(self.window.combat_view)
+                    if self.next_lvl:
+                        self.next_lvl = False
+                        from fight import CombatView
+                        self.window.combat_view = CombatView()
+                        self.window.combat_view.setup()
+                        self.window.show_view(self.window.combat_view)
             return
 
     def on_key_release(self, key, modifiers):
@@ -224,3 +257,4 @@ class City(arcade.View):
         self.current_dialogue = dialogue_list
         self.dialogue_index = 0
         self.is_dialogue_active = True
+
