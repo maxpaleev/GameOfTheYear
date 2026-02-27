@@ -1,8 +1,6 @@
-from time import sleep
-
 import arcade
 from arcade.gui import UIManager, UIFlatButton, UITextureButton, UILabel, UIInputText, UITextArea, UISlider, UIDropdown, \
-    UIMessageBox  # Это разные виджеты
+    UIMessageBox
 from arcade.gui.widgets.layout import UIAnchorLayout, UIBoxLayout
 from fight import CombatView
 from city import City
@@ -12,17 +10,12 @@ SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 TITLE = "Шум против Тишины"
 
-# Состояния игры
-STATE_MENU = 0
-STATE_COMBAT = 1
-STATE_EXPLORE = 2
-STATE_DIALOGUE = 3
+
 
 
 class GameWindow(arcade.Window):
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, TITLE)
-        self.state = STATE_MENU
 
         self.menu_view = MenuView()
         self.combat_view = CombatView()  # PvZ режим
@@ -138,7 +131,7 @@ class MenuView(arcade.View):
 
 
 
-# Запуск
+
 def main():
     window = GameWindow()
     window.setup()
