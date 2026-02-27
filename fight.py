@@ -85,16 +85,17 @@ class CombatView(arcade.View):
         self.window.city = City()
 
         self.money = 100
+        self.health = 100
         self.metronome_count = 0
         self.money_timer = 0
         self.spawn_timer = 0
-
 
         self.held_unit = None
         self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
 
         # UI
         self.money_label = arcade.Text(f"Монеты: {self.money}", 800, 550, arcade.color.WHITE, 18)
+        self.health_label = arcade.Text(f"Здоровье: {self.health}", 800, 500, arcade.color.WHITE, 18)
 
     def setup(self):
         # Инициализация карт
@@ -123,6 +124,7 @@ class CombatView(arcade.View):
         self.enemies_list.draw()
         self.bullets_list.draw()
         self.money_label.draw()
+        self.health_label.draw()
 
         if self.held_unit:
             arcade.draw_sprite(self.held_unit)
@@ -224,6 +226,14 @@ class CombatView(arcade.View):
 
         # Коллизии: Враги -> Башни (ИСПРАВЛЕНО)
         for enemy in self.enemies_list:
+            if enemy.center_x < 100 and self.health > 0:
+                self.health -= 20
+                enemy.remove_from_sprite_lists()
+                self.health_label.text = f"Здоровье: {self.health}"
+                if self.health <= 0:
+                    self.window.city_view = City()
+                    self.window.city_view.setup()
+                    self.window.show_view(self.window.city_view)
             hit_towers = arcade.check_for_collision_with_list(enemy, self.towers_list)
             if hit_towers:
                 # Враг останавливается
