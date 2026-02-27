@@ -24,7 +24,6 @@ class GameWindow(arcade.Window):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, TITLE)
         self.state = STATE_MENU
 
-        # Инициализация "Видов"
         self.menu_view = MenuView()
         self.combat_view = CombatView()  # PvZ режим
         self.explore_view = City()  # Stardew режим
@@ -50,7 +49,7 @@ class MenuView(arcade.View):
         self.manager.add(self.anchor_layout)
 
         self.fade_alpha = 0  # Текущая прозрачность (0 - прозрачно, 255 - темно)
-        self.fade_speed = 150  # Скорость затемнения (единиц альфы в секунду)
+        self.fade_speed = 150
         self.is_fading = False
 
         self.all_lines = [
@@ -104,13 +103,13 @@ class MenuView(arcade.View):
         if self.fade_alpha > 0:
             arcade.draw_lrbt_rectangle_filled(
                 0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,
-                (0, 0, 0, int(self.fade_alpha))  # Цвет: Черный + прозрачность
+                (0, 0, 0, int(self.fade_alpha))
             )
         if self.fade_alpha == 255:
             for i in range(self.current_line_index):
                 arcade.draw_text(self.all_lines[i], 100, 500 - i * 40, arcade.color.WHITE, 20)
 
-                # Рисуем текущую строку, которая печатается прямо сейчас
+
 
             if self.current_line_index < len(self.all_lines):
                 current_text = self.all_lines[self.current_line_index][:self.visible_chars]
