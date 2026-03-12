@@ -40,20 +40,44 @@ class FaceDirection(enum.Enum):
 class Player(arcade.Sprite):
     def __init__(self):
         super().__init__(scale=0.1)
-        self.texture = arcade.load_texture('resurses/hero_r.png')
+        self.texture_change_time = None
+        self.idle_texture = arcade.load_texture('resurses/hero/hero1.png')
+        self.texture = self.idle_texture
+
+        self.walk_textures = []
+        for i in range(1, 3):
+            texture = arcade.load_texture(f'resurses/hero/hero{i}.png')
+            self.walk_textures.append(texture)
+
+        self.current_texture = 0
+        self.texture_change_time = 0
+        self.texture_change_delay = 0.1
+        self.is_walking = False
+        self.face_direction = FaceDirection.RIGHT
+
         self.speed = 300
         self.center_x = SCREEN_WIDTH // 2
         self.center_y = SCREEN_HEIGHT // 2
 
-        self.face_direction = FaceDirection.RIGHT
-        self.texture_r = arcade.load_texture('resurses/hero_r.png')
-        self.texture_l = arcade.load_texture('resurses/hero_l.png')
-
     def update_animation(self, delta_time: float = 1 / 60):
-        if self.face_direction == FaceDirection.RIGHT:
-            self.texture = self.texture_r
+        if self.is_walking:
+            self.texture_change_time += delta_time
+            if self.texture_change_time >= self.texture_change_delay:
+                self.texture_change_time = 0
+                self.current_texture += 1
+                if self.current_texture >= len(self.walk_textures):
+                    self.current_texture = 0
+                if self.face_direction == FaceDirection.RIGHT:
+                    self.texture = self.walk_textures[self.current_texture]
+                else:
+                    self.texture = self.walk_textures[self.current_texture].flip_horizontally()
         else:
-            self.texture = self.texture_l
+            if self.face_direction == FaceDirection.RIGHT:
+                self.texture = self.idle_texture
+            else:
+                self.texture = self.idle_texture.flip_horizontally()
+
+
 
     def update(self, delta_time, keys_pressed):
         dx, dy = 0, 0
@@ -83,6 +107,8 @@ class Player(arcade.Sprite):
 
         self.center_x = max(self.width / 2, min(world_width - self.width / 2, self.center_x))
         self.center_y = max(self.height / 2, min(world_height - self.height / 2, self.center_y))
+
+        self.is_walking = dx or dy
 
 
 class NPC(arcade.Sprite):
@@ -117,8 +143,8 @@ class NPC(arcade.Sprite):
     def get_radio(self):
         global RADIOS
         name = self.name
-        query = f"UPDATE player SET {name} = ?, radios = ? "
-        cursor.execute(query, (True, RADIOS + 1))
+        query = f"UPDATE player SET {name} = ?, radios = radios + 1 "
+        cursor.execute(query, (True, ))
         RADIOS += 1
         db.commit()
 
@@ -291,11 +317,11 @@ class City(arcade.View):
         for npc in self.NPC_list:
             if arcade.check_for_collision(self.player, npc):
                 if not npc.in_interaction_zone:
-                    # if npc.unique:
                         npc.in_interaction_zone = True
                         npc.start_dialogue()
                         self.active_npc = npc
-                        npc.get_radio()
+                        if npc.unique:
+                            npc.get_radio()
                 break
             else:
                 npc.in_interaction_zone = False

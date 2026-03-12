@@ -1,4 +1,5 @@
 import random
+import sqlite3
 
 import arcade
 
@@ -14,6 +15,11 @@ GRID_START_Y = 100
 
 ENEMY_REWARDS = {"Ghost": 15, "Banshee": 40, "Specter": 10}
 ROW_TOLERANCE = TILE_SIZE * 0.6
+
+db = sqlite3.connect("resurses/game.db")
+cursor = db.cursor()
+query = "SELECT * FROM player"
+LEVEL = cursor.execute(query).fetchone()[2]
 
 CARD_INFO = [
     {"name": "Метроном", "hint": "каждые 5 сек +10 монет", "price": 10, "pos": (80, 490)},
@@ -349,6 +355,9 @@ class CombatView(arcade.View):
             city = City()
             city.setup()
             self.window.show_view(city)
+            query = 'UPDATE player SET levels = levels + 1'
+            cursor.execute(query)
+            db.commit()
             return
 
         self._resolve_enemy_attacks(delta_time)
