@@ -4,23 +4,37 @@ from arcade.gui import UIManager, UIFlatButton, UITextureButton, UILabel, UIInpu
 from arcade.gui.widgets.layout import UIAnchorLayout, UIBoxLayout
 from fight import CombatView
 from city import City
+import sqlite3
 
 # Константы
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 TITLE = "Шум против Тишины"
 
+db = sqlite3.connect('resurses/game.db')
+cursor = db.cursor()
+query = '''
+           CREATE TABLE IF NOT EXISTS player(
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               radios INTEGER,
+               levels INTEGER
+           ) '''
+cursor.execute(query)
+db.commit()
+if cursor.execute('SELECT * FROM player').fetchone() is not None:
+    RADIOS, LEVELS = cursor.execute('SELECT * FROM player').fetchone()[1:]
+else:
+    RADIOS, LEVELS = 0, 0
+db.close()
 
 
 
 class GameWindow(arcade.Window):
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, TITLE)
-
         self.menu_view = MenuView()
         self.combat_view = CombatView()  # PvZ режим
-        self.explore_view = City()  # Stardew режим
-
+        self.explore_view = City()
     def setup(self):
         self.show_view(self.menu_view)
 
@@ -72,7 +86,11 @@ class MenuView(arcade.View):
                                   text_color=arcade.color.WHITE)
 
         def start_game(event):
-            self.is_fading = True
+            if not RADIOS and not LEVELS:
+                self.is_fading = True
+            else:
+                self.window.explore_view.setup()
+                self.window.show_view(self.window.explore_view)
 
         start_text.on_click = start_game
         settings_text = UIFlatButton(text='Настройки',
@@ -128,6 +146,7 @@ class MenuView(arcade.View):
                     self.window.explore_view.setup()
                     self.window.show_view(self.window.explore_view)
             return
+
 
 
 
