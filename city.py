@@ -21,7 +21,7 @@ query = "SELECT * FROM player"
 player = cursor.execute(query).fetchone()
 RADIOS = player[1]
 Granma, Military, Mechanic, Governor = player[3:]
-NPC_uni = {'Granma': Granma, 'Military': Military, 'Mechanic': Mechanic, 'Governor': Governor}
+NPC_uni = {'Granma': Granma, 'Elin': Military, 'Mechanic': Mechanic, 'Governor': Governor}
 
 
 def load_dialogues():
@@ -76,8 +76,6 @@ class Player(arcade.Sprite):
                 self.texture = self.idle_texture
             else:
                 self.texture = self.idle_texture.flip_horizontally()
-
-
 
     def update(self, delta_time, keys_pressed):
         dx, dy = 0, 0
@@ -144,21 +142,38 @@ class NPC(arcade.Sprite):
         global RADIOS
         name = self.name
         query = f"UPDATE player SET {name} = ?, radios = radios + 1 "
-        cursor.execute(query, (True, ))
+        cursor.execute(query, (True,))
         RADIOS += 1
         db.commit()
 
 
 class Granma(NPC):
     def __init__(self):
-        super().__init__("Granma", "resurses/grandma.png", ALL_DIALOGUES["granma_quest"], scale=0.1)
+        super().__init__("Granma", "resurses/NPC/grandma/grandma1.png", ALL_DIALOGUES["granma_quest"], scale=0.1)
         self.center_x = SCREEN_WIDTH // 2 - 100
         self.center_y = SCREEN_HEIGHT // 2 + 150
+        self.current_texture = 0
+        self.texture_change_time = 0
+        self.texture_change_delay = 0.3
+
+        self.animate_textures = []
+        for i in range(1, 3):
+            texture = arcade.load_texture(f'resurses/NPC/grandma/grandma{i}.png')
+            self.animate_textures.append(texture)
+
+    def update_animation(self, delta_time):
+        self.texture_change_time += delta_time
+        if self.texture_change_time >= self.texture_change_delay:
+            self.texture_change_time = 0
+            self.current_texture += 1
+            if self.current_texture >= len(self.animate_textures):
+                self.current_texture = 0
+            self.texture = self.animate_textures[self.current_texture]
 
 
-class Military(NPC):
+class Elin(NPC):
     def __init__(self, on_complete_callback=None):
-        super().__init__("Military", 'resurses/military.jpg', ALL_DIALOGUES["military_quest"], scale=0.2)
+        super().__init__("Elin", 'resurses/NPC/Elin.png', ALL_DIALOGUES["Elin_quest"], scale=0.1)
         self.center_x = SCREEN_WIDTH // 2 + 1100
         self.center_y = SCREEN_HEIGHT // 2 + 300
         self.on_complete = on_complete_callback
@@ -170,22 +185,38 @@ class Military(NPC):
 
 class Mechanic(NPC):
     def __init__(self):
-        super().__init__("Mechanic", 'resurses/mechanic.png', ALL_DIALOGUES["mechanic_quest"], scale=0.2)
+        super().__init__("Mechanic", 'resurses/NPC/mechanic.png', ALL_DIALOGUES["mechanic_quest"], scale=0.2)
         self.center_x = SCREEN_WIDTH // 2 + 700
         self.center_y = SCREEN_HEIGHT // 2 + 100
 
 
 class Governor(NPC):
     def __init__(self):
-        super().__init__("Governor", 'resurses/governor.png', ALL_DIALOGUES["governor_quest"], scale=0.6)
+        super().__init__("Governor", 'resurses/NPC/Governor/Governor1.png', ALL_DIALOGUES["governor_quest"], scale=0.1)
         self.center_x = SCREEN_WIDTH // 2 - 250
-        self.center_y = SCREEN_HEIGHT // 2 + 60
+        self.center_y = SCREEN_HEIGHT // 2 + 10
+        self.current_texture = 0
+        self.texture_change_time = 0
+        self.texture_change_delay = 0.3
+        self.animate_textures = []
+        for i in range(1, 3):
+            texture = arcade.load_texture(f'resurses/NPC/Governor/Governor{i}.png')
+            self.animate_textures.append(texture)
+
+    def update_animation(self, delta_time):
+        self.texture_change_time += delta_time
+        if self.texture_change_time >= self.texture_change_delay:
+            self.texture_change_time = 0
+            self.current_texture += 1
+            if self.current_texture >= len(self.animate_textures):
+                self.current_texture = 0
+            self.texture = self.animate_textures[self.current_texture]
 
 
 class Speaker(arcade.Sprite):
     def __init__(self, x, y, sound_object, max_distance=1000):
         super().__init__(scale=0.2)
-        self.texture = arcade.load_texture('resurses/speaker.png')
+        self.texture = arcade.load_texture('resurses/NPC/speaker.png')
         self.center_x = x
         self.center_y = y
         self.max_distance = max_distance
@@ -241,7 +272,7 @@ class City(arcade.View):
         self.player_list.append(self.player)
 
         self.NPC_list.append(Granma())
-        self.NPC_list.append(Military(on_complete_callback=self.start_combat))
+        self.NPC_list.append(Elin(on_complete_callback=self.start_combat))
         self.NPC_list.append(Mechanic())
         self.NPC_list.append(Governor())
         musik = arcade.load_sound('resurses/ost.mp3')
@@ -284,6 +315,7 @@ class City(arcade.View):
         if self.active_npc:
             return
         self.player_list.update_animation()
+        self.NPC_list.update_animation()
         self.player_list.update(delta_time, self.keys_pressed)
         cam_x, cam_y = self.world_camera.position
         dz_left = cam_x - DEAD_ZONE_W // 2
@@ -317,11 +349,11 @@ class City(arcade.View):
         for npc in self.NPC_list:
             if arcade.check_for_collision(self.player, npc):
                 if not npc.in_interaction_zone:
-                        npc.in_interaction_zone = True
-                        npc.start_dialogue()
-                        self.active_npc = npc
-                        if npc.unique:
-                            npc.get_radio()
+                    npc.in_interaction_zone = True
+                    npc.start_dialogue()
+                    self.active_npc = npc
+                    if npc.unique:
+                        npc.get_radio()
                 break
             else:
                 npc.in_interaction_zone = False

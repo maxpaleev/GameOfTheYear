@@ -7,10 +7,10 @@ from city import City
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
-TILE_SIZE = 64
+TILE_SIZE = 75
 GRID_ROWS = 5
 GRID_COLS = 9
-GRID_START_X = 200
+GRID_START_X = 280
 GRID_START_Y = 100
 
 ENEMY_REWARDS = {"Ghost": 15, "Banshee": 40, "Specter": 10}
@@ -84,7 +84,7 @@ class Unit(arcade.Sprite):
 class Metronome(Unit):
     def __init__(self):
         super().__init__(
-            "Metronome", "resurses/metronome.png", price=10, health=100, scale=0.1
+            "Metronome", "resurses/Units/metronome.png", price=10, health=100, scale=0.1
         )
         self.fire_rate = 5.0
 
@@ -92,7 +92,7 @@ class Metronome(Unit):
 class Strings(Unit):
     def __init__(self):
         super().__init__(
-            "Strings", "resurses/strings.png", price=50, health=120, scale=0.1
+            "Strings", "resurses/Units/strings.png", price=50, health=120, scale=0.1
         )
         self.bullet_speed = 700
         self.bullet_damage = 50
@@ -102,7 +102,7 @@ class Strings(Unit):
 class Bass(Unit):
     def __init__(self):
         super().__init__(
-            "Bass", "resurses/note.png", price=30, health=80, scale=0.15
+            "Bass", "resurses/Units/boombox.png", price=30, health=80, scale=0.1
         )
         self.bullet_speed = 900
         self.bullet_damage = 20
@@ -112,7 +112,7 @@ class Bass(Unit):
 class Drum(Unit):
     def __init__(self):
         super().__init__(
-            "Drum", "resurses/metronome.png", price=75, health=150, scale=0.12
+            "Drum", "resurses/Units/metronome.png", price=75, health=150, scale=0.1
         )
         self.splash_damage = 30
         self.fire_rate = 5.0
@@ -141,7 +141,7 @@ class Enemy(arcade.Sprite):
 class Ghost(Enemy):
     def __init__(self):
         super().__init__(
-            "Ghost", "resurses/ghost.png",
+            "Ghost", "resurses/Enemy/ghost.png",
             damage=25, cooldown=1.5, health=60, scale=0.2,
         )
         self.speed = 50
@@ -150,7 +150,7 @@ class Ghost(Enemy):
 class Banshee(Enemy):
     def __init__(self):
         super().__init__(
-            "Banshee", "resurses/ghost.png",
+            "Banshee", "resurses/Enemy/ghost.png",
             damage=50, cooldown=2.0, health=180, scale=0.3,
         )
         self.speed = 25
@@ -159,7 +159,7 @@ class Banshee(Enemy):
 class Specter(Enemy):
     def __init__(self):
         super().__init__(
-            "Specter", "resurses/ghost.png",
+            "Specter", "resurses/Enemy/ghost.png",
             damage=10, cooldown=0.8, health=40, scale=0.15,
         )
         self.speed = 120
@@ -167,7 +167,7 @@ class Specter(Enemy):
 
 class Bullet(arcade.Sprite):
     def __init__(self, start_x, start_y, speed=700, damage=10):
-        super().__init__("resurses/note.png", scale=0.1)
+        super().__init__("resurses/Enemy/note.png", scale=0.1)
         self.center_x = start_x
         self.center_y = start_y
         self.change_x = speed
@@ -182,7 +182,7 @@ class Bullet(arcade.Sprite):
 class CombatView(arcade.View):
     def __init__(self):
         super().__init__()
-        self.background = arcade.load_texture("resurses/pole.jpg")
+        self.background = arcade.load_texture("resurses/pol.png")
 
         self.cards_list = arcade.SpriteList()
         self.towers_list = arcade.SpriteList()
@@ -209,6 +209,7 @@ class CombatView(arcade.View):
         classes = [Metronome, Strings, Bass, Drum]
         for cls, info in zip(classes, CARD_INFO):
             card = cls()
+            card.scale = 0.1
             cx, cy = info["pos"]
             card.position = (cx, cy + CARD_ICON_OFFSET)
             self.cards_list.append(card)
@@ -222,13 +223,13 @@ class CombatView(arcade.View):
             ),
         )
 
-        for row in range(GRID_ROWS):
-            for col in range(GRID_COLS):
-                x = GRID_START_X + col * TILE_SIZE + TILE_SIZE / 2
-                y = GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2
-                arcade.draw_rect_outline(
-                    arcade.rect.XYWH(x, y, TILE_SIZE, TILE_SIZE), arcade.color.BLACK
-                )
+        # for row in range(GRID_ROWS):
+        #     for col in range(GRID_COLS):
+        #         x = GRID_START_X + col * TILE_SIZE + TILE_SIZE / 2
+        #         y = GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2
+        #         arcade.draw_rect_outline(
+        #             arcade.rect.XYWH(x, y, TILE_SIZE, TILE_SIZE), arcade.color.BLACK
+        #         )
 
         for effect in self.splash_effects:
             effect.draw()
@@ -273,15 +274,15 @@ class CombatView(arcade.View):
             bg_color = (18, 28, 18, 220) if can_afford else (28, 12, 12, 220)
 
             arcade.draw_lrbt_rectangle_filled(
-                CARD_X, CARD_X + CARD_W, bot, top, bg_color
+                CARD_X + 8, CARD_X - 8 + CARD_W, bot, top, bg_color
             )
             arcade.draw_lrbt_rectangle_outline(
-                CARD_X, CARD_X + CARD_W, bot, top, border_color, 2
+                CARD_X + 8, CARD_X - 8 + CARD_W, bot, top, border_color, 2
             )
 
             divider_y = cy + CARD_TEXT_OFFSET_NAME + 16
             arcade.draw_lrbt_rectangle_filled(
-                CARD_X + 4, CARD_X + CARD_W - 4,
+                CARD_X + 4 +8, CARD_X  - 8 + CARD_W - 4,
                 divider_y, divider_y + 1,
                 (90, 90, 90, 180),
             )

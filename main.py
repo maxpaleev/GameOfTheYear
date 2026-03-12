@@ -18,7 +18,7 @@ query = '''
                radios INTEGER DEFAULT 0,
                levels INTEGER DEFAULT 0,
                Granma BOOLEAN DEFAULT FALSE,
-               Military BOOLEAN DEFAULT FALSE,
+               Elin BOOLEAN DEFAULT FALSE,
                Mechanic BOOLEAN DEFAULT FALSE,
                Governor BOOLEAN DEFAULT FALSE
            ) '''
@@ -100,6 +100,8 @@ class MenuView(arcade.View):
             else:
                 self.window.explore_view.setup()
                 self.window.show_view(self.window.explore_view)
+                # self.window.combat_view.setup()
+                # self.window.show_view(self.window.combat_view)
 
         start_text.on_click = start_game
         settings_text = UIFlatButton(text='Настройки',
