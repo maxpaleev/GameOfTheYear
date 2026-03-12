@@ -1,5 +1,5 @@
 import enum
-
+import sqlite3
 import arcade
 import json
 from pyglet.graphics import Batch
@@ -14,6 +14,14 @@ DEAD_ZONE_W = int(SCREEN_WIDTH * 0.35)
 DEAD_ZONE_H = int(SCREEN_HEIGHT * 0.35)
 
 CAMERA_LERP = 0.15
+
+db = sqlite3.connect("resurses/game.db")
+cursor = db.cursor()
+query = "SELECT * FROM player"
+player = cursor.execute(query).fetchone()
+RADIOS = player[1]
+Granma, Military, Mechanic, Governor = player[3:]
+NPC_uni = {'Granma': Granma, 'Military': Military, 'Mechanic': Mechanic, 'Governor': Governor}
 
 
 def load_dialogues():
@@ -84,9 +92,14 @@ class NPC(arcade.Sprite):
         self.dialogue_script = dialogue_script
         self.dialogue_index = 0
         self.in_interaction_zone = False
+        self.unique = not NPC_uni[name]
 
     def start_dialogue(self):
-        self.dialogue_index = 0
+        if self.unique:
+            self.dialogue_index = 0
+        else:
+            self.dialogue_index = 0
+            self.dialogue_script = ALL_DIALOGUES['default_quest']
 
     def get_current_line(self):
         return self.dialogue_script[self.dialogue_index]
@@ -100,6 +113,14 @@ class NPC(arcade.Sprite):
 
     def on_dialogue_end(self):
         pass
+
+    def get_radio(self):
+        global RADIOS
+        name = self.name
+        query = f"UPDATE player SET {name} = ?, radios = ? "
+        cursor.execute(query, (True, RADIOS + 1))
+        RADIOS += 1
+        db.commit()
 
 
 class Granma(NPC):
@@ -270,9 +291,11 @@ class City(arcade.View):
         for npc in self.NPC_list:
             if arcade.check_for_collision(self.player, npc):
                 if not npc.in_interaction_zone:
-                    npc.in_interaction_zone = True
-                    npc.start_dialogue()
-                    self.active_npc = npc
+                    # if npc.unique:
+                        npc.in_interaction_zone = True
+                        npc.start_dialogue()
+                        self.active_npc = npc
+                        npc.get_radio()
                 break
             else:
                 npc.in_interaction_zone = False
@@ -291,10 +314,10 @@ class City(arcade.View):
         if self.active_npc:
             if key == arcade.key.SPACE:
                 if not self.active_npc.advance_dialogue():
+                    self.active_npc.unique = False
                     self.active_npc = None
             return
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
-

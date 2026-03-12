@@ -2,8 +2,7 @@ import arcade
 from arcade.gui import UIManager, UIFlatButton, UITextureButton, UILabel, UIInputText, UITextArea, UISlider, UIDropdown, \
     UIMessageBox
 from arcade.gui.widgets.layout import UIAnchorLayout, UIBoxLayout
-from fight import CombatView
-from city import City
+
 import sqlite3
 
 # Константы
@@ -16,17 +15,27 @@ cursor = db.cursor()
 query = '''
            CREATE TABLE IF NOT EXISTS player(
                id INTEGER PRIMARY KEY AUTOINCREMENT,
-               radios INTEGER,
-               levels INTEGER
+               radios INTEGER DEFAULT 0,
+               levels INTEGER DEFAULT 0,
+               Granma BOOLEAN DEFAULT FALSE,
+               Military BOOLEAN DEFAULT FALSE,
+               Mechanic BOOLEAN DEFAULT FALSE,
+               Governor BOOLEAN DEFAULT FALSE
            ) '''
 cursor.execute(query)
 db.commit()
 if cursor.execute('SELECT * FROM player').fetchone() is not None:
-    RADIOS, LEVELS = cursor.execute('SELECT * FROM player').fetchone()[1:]
+    RADIOS, LEVELS = cursor.execute('SELECT * FROM player').fetchone()[1:3]
 else:
-    RADIOS, LEVELS = 0, 0
+    cursor.execute('INSERT INTO player DEFAULT VALUES')
+    db.commit()
+    RADIOS, LEVELS = cursor.execute('SELECT * FROM player').fetchone()[1:3]
 db.close()
+print(RADIOS, LEVELS)
 
+
+from fight import CombatView
+from city import City
 
 
 class GameWindow(arcade.Window):
