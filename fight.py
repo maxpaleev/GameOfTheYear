@@ -1,6 +1,7 @@
 import random
+
 import arcade
-import math
+
 from city import City
 
 SCREEN_WIDTH = 1000
@@ -11,6 +12,48 @@ GRID_COLS = 9
 GRID_START_X = 200
 GRID_START_Y = 100
 
+ENEMY_REWARDS = {"Ghost": 15, "Banshee": 40, "Specter": 10}
+ROW_TOLERANCE = TILE_SIZE * 0.6
+
+CARD_INFO = [
+    {"name": "Метроном", "hint": "каждые 5 сек +10 монет", "price": 10, "pos": (80, 490)},
+    {"name": "Струны",   "hint": "50 ур / 3 сек, 1 ряд",   "price": 50, "pos": (80, 370)},
+    {"name": "Бас",      "hint": "20 ур / 1 сек, быстро",  "price": 30, "pos": (80, 250)},
+    {"name": "Барабан",  "hint": "30 ур / 5 сек, AOE",     "price": 75, "pos": (80, 130)},
+]
+
+CARD_H = 110
+CARD_W = 155
+CARD_X = 5
+CARD_ICON_OFFSET = 28
+CARD_TEXT_OFFSET_NAME = -22
+CARD_TEXT_OFFSET_HINT = -38
+CARD_TEXT_OFFSET_PRICE = -54
+
+
+class SplashEffect:
+    DURATION = 0.35
+
+    def __init__(self, x, y, max_radius):
+        self.x = x
+        self.y = y
+        self.max_radius = max_radius
+        self.timer = 0.0
+        self.alive = True
+
+    def update(self, delta_time):
+        self.timer += delta_time
+        if self.timer >= self.DURATION:
+            self.alive = False
+
+    def draw(self):
+        t = self.timer / self.DURATION
+        radius = self.max_radius * t
+        alpha = int(220 * (1.0 - t))
+        color = (255, 160, 40, alpha)
+        arcade.draw_circle_outline(self.x, self.y, radius, color, border_width=3)
+        arcade.draw_circle_filled(self.x, self.y, radius * 0.35, (*color[:3], alpha // 2))
+
 
 class Unit(arcade.Sprite):
     def __init__(self, unit_type, image, price=0, health=100, scale=1):
@@ -18,11 +61,56 @@ class Unit(arcade.Sprite):
         self.unit_type = unit_type
         self.price = price
         self.health = health
-        self.timer = 0
+        self.timer = 0.0
+        self.fire_rate = 999.0
 
     def clone(self):
-        # Универсальный клон для всех наследников
         return self.__class__()
+
+    def tick(self, delta_time):
+        self.timer += delta_time
+        if self.timer >= self.fire_rate:
+            self.timer -= self.fire_rate
+            return True
+        return False
+
+
+class Metronome(Unit):
+    def __init__(self):
+        super().__init__(
+            "Metronome", "resurses/metronome.png", price=10, health=100, scale=0.1
+        )
+        self.fire_rate = 5.0
+
+
+class Strings(Unit):
+    def __init__(self):
+        super().__init__(
+            "Strings", "resurses/strings.png", price=50, health=120, scale=0.1
+        )
+        self.bullet_speed = 700
+        self.bullet_damage = 50
+        self.fire_rate = 3.0
+
+
+class Bass(Unit):
+    def __init__(self):
+        super().__init__(
+            "Bass", "resurses/note.png", price=30, health=80, scale=0.15
+        )
+        self.bullet_speed = 900
+        self.bullet_damage = 20
+        self.fire_rate = 1.0
+
+
+class Drum(Unit):
+    def __init__(self):
+        super().__init__(
+            "Drum", "resurses/metronome.png", price=75, health=150, scale=0.12
+        )
+        self.splash_damage = 30
+        self.fire_rate = 5.0
+        self.splash_radius = TILE_SIZE * 2.5
 
 
 class Enemy(arcade.Sprite):
@@ -31,37 +119,48 @@ class Enemy(arcade.Sprite):
         self.unit_type = unit_type
         self.damage = damage
         self.health = health
+        self.max_health = health
         self.max_cooldown = cooldown
-        self.current_cooldown = 0  # Начинаем без задержки
-
-
-class Strings(Unit):
-    def __init__(self):
-        super().__init__('Strings', 'resurses/strings.png', price=50, health=100, scale=0.1)
-        self.bullet_speed = 800
-        self.bullet_damage = 50
-
-
-class Metronome(Unit):
-    def __init__(self):
-        super().__init__('Metronome', 'resurses/metronome.png', price=10, health=100, scale=0.1)
-
-
-class Ghost(Enemy):
-    def __init__(self):
-        # Увеличил здоровье, так как 10 — это на один выстрел
-        super().__init__('Ghost', 'resurses/ghost.png', damage=25, cooldown=1.5, health=60, scale=0.2)
+        self.current_cooldown = 0.0
         self.speed = 50
+        self.blocked = False
 
-    def update(self, delta_time):
-        # Движение влево, если не остановлен (логика остановки в CombatView)
-        self.center_x -= self.speed * delta_time  # Упрощенное движение
+    def move(self, delta_time):
+        if not self.blocked:
+            self.center_x -= self.speed * delta_time
         if self.right < 0:
             self.remove_from_sprite_lists()
 
 
+class Ghost(Enemy):
+    def __init__(self):
+        super().__init__(
+            "Ghost", "resurses/ghost.png",
+            damage=25, cooldown=1.5, health=60, scale=0.2,
+        )
+        self.speed = 50
+
+
+class Banshee(Enemy):
+    def __init__(self):
+        super().__init__(
+            "Banshee", "resurses/ghost.png",
+            damage=50, cooldown=2.0, health=180, scale=0.3,
+        )
+        self.speed = 25
+
+
+class Specter(Enemy):
+    def __init__(self):
+        super().__init__(
+            "Specter", "resurses/ghost.png",
+            damage=10, cooldown=0.8, health=40, scale=0.15,
+        )
+        self.speed = 120
+
+
 class Bullet(arcade.Sprite):
-    def __init__(self, start_x, start_y, speed=800, damage=10):
+    def __init__(self, start_x, start_y, speed=700, damage=10):
         super().__init__("resurses/note.png", scale=0.1)
         self.center_x = start_x
         self.center_y = start_y
@@ -77,57 +176,133 @@ class Bullet(arcade.Sprite):
 class CombatView(arcade.View):
     def __init__(self):
         super().__init__()
-        self.background = arcade.load_texture('resurses/pole.jpg')
+        self.background = arcade.load_texture("resurses/pole.jpg")
+
         self.cards_list = arcade.SpriteList()
         self.towers_list = arcade.SpriteList()
         self.bullets_list = arcade.SpriteList()
         self.enemies_list = arcade.SpriteList()
-        self.window.city = City()
+        self.splash_effects = []
 
-        self.money = 100
-        self.health = 100
-        self.metronome_count = 0
-        self.money_timer = 0
-        self.spawn_timer = 0
+        self.money = 150
+        self.wave = 1
+        self.wave_timer = 0.0
+        self.wave_interval = 15.0
 
         self.held_unit = None
-        self.grid = [[0 for _ in range(GRID_COLS)] for _ in range(GRID_ROWS)]
+        self.grid = [[0] * GRID_COLS for _ in range(GRID_ROWS)]
 
-        # UI
-        self.money_label = arcade.Text(f"Монеты: {self.money}", 800, 550, arcade.color.WHITE, 18)
-        self.health_label = arcade.Text(f"Здоровье: {self.health}", 800, 500, arcade.color.WHITE, 18)
+        self.money_label = arcade.Text(
+            f"Монеты: {self.money}", 800, 570, arcade.color.WHITE, 16
+        )
+        self.wave_label = arcade.Text(
+            f"Волна: {self.wave}", 800, 545, arcade.color.YELLOW, 14
+        )
 
     def setup(self):
-        # Инициализация карт
-        metronome_card = Metronome()
-        metronome_card.position = (80, 500)
-        self.cards_list.append(metronome_card)
-
-        strings_card = Strings()
-        strings_card.position = (80, 400)
-        self.cards_list.append(strings_card)
+        classes = [Metronome, Strings, Bass, Drum]
+        for cls, info in zip(classes, CARD_INFO):
+            card = cls()
+            cx, cy = info["pos"]
+            card.position = (cx, cy + CARD_ICON_OFFSET)
+            self.cards_list.append(card)
 
     def on_draw(self):
         self.clear()
-        arcade.draw_texture_rect(self.background,
-                                 arcade.rect.XYWH(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT))
+        arcade.draw_texture_rect(
+            self.background,
+            arcade.rect.XYWH(
+                SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, SCREEN_WIDTH, SCREEN_HEIGHT
+            ),
+        )
 
-        # Сетка
         for row in range(GRID_ROWS):
             for col in range(GRID_COLS):
                 x = GRID_START_X + col * TILE_SIZE + TILE_SIZE / 2
                 y = GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2
-                arcade.draw_rect_outline(arcade.rect.XYWH(x, y, TILE_SIZE, TILE_SIZE), arcade.color.BLACK)
+                arcade.draw_rect_outline(
+                    arcade.rect.XYWH(x, y, TILE_SIZE, TILE_SIZE), arcade.color.BLACK
+                )
 
+        for effect in self.splash_effects:
+            effect.draw()
+
+        self._draw_card_labels()
         self.cards_list.draw()
+
         self.towers_list.draw()
         self.enemies_list.draw()
         self.bullets_list.draw()
+
+        for enemy in self.enemies_list:
+            self._draw_hp_bar(enemy)
+
         self.money_label.draw()
-        self.health_label.draw()
+        self.wave_label.draw()
 
         if self.held_unit:
             arcade.draw_sprite(self.held_unit)
+
+    def _draw_hp_bar(self, enemy):
+        bar_w = 40
+        bar_h = 5
+        x = enemy.center_x - bar_w / 2
+        y = enemy.top + 4
+        pct = max(0.0, enemy.health / enemy.max_health)
+        arcade.draw_lrbt_rectangle_filled(
+            x, x + bar_w, y, y + bar_h, arcade.color.DARK_RED
+        )
+        arcade.draw_lrbt_rectangle_filled(
+            x, x + bar_w * pct, y, y + bar_h, arcade.color.GREEN
+        )
+
+    def _draw_card_labels(self):
+        for info in CARD_INFO:
+            cx, cy = info["pos"]
+            top = cy + CARD_H // 2
+            bot = cy - CARD_H // 2
+            can_afford = self.money >= info["price"]
+
+            border_color = (80, 200, 80, 255) if can_afford else (180, 50, 50, 255)
+            bg_color = (18, 28, 18, 220) if can_afford else (28, 12, 12, 220)
+
+            arcade.draw_lrbt_rectangle_filled(
+                CARD_X, CARD_X + CARD_W, bot, top, bg_color
+            )
+            arcade.draw_lrbt_rectangle_outline(
+                CARD_X, CARD_X + CARD_W, bot, top, border_color, 2
+            )
+
+            divider_y = cy + CARD_TEXT_OFFSET_NAME + 16
+            arcade.draw_lrbt_rectangle_filled(
+                CARD_X + 4, CARD_X + CARD_W - 4,
+                divider_y, divider_y + 1,
+                (90, 90, 90, 180),
+            )
+
+            arcade.draw_text(
+                info["name"],
+                CARD_X + CARD_W // 2, cy + CARD_TEXT_OFFSET_NAME,
+                arcade.color.WHITE,
+                font_size=13,
+                bold=True,
+                anchor_x="center",
+            )
+            arcade.draw_text(
+                info["hint"],
+                CARD_X + CARD_W // 2, cy + CARD_TEXT_OFFSET_HINT,
+                arcade.color.GOLD,
+                font_size=9,
+                anchor_x="center",
+            )
+            price_color = (100, 210, 100, 255) if can_afford else (200, 80, 80, 255)
+            arcade.draw_text(
+                f"{info['price']} монет",
+                CARD_X + CARD_W // 2, cy + CARD_TEXT_OFFSET_PRICE,
+                price_color,
+                font_size=9,
+                anchor_x="center",
+            )
 
     def on_mouse_press(self, x, y, button, modifiers):
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -138,18 +313,10 @@ class CombatView(arcade.View):
                     self.held_unit = card.clone()
                     self.held_unit.alpha = 150
                     self.held_unit.position = (x, y)
-
         elif button == arcade.MOUSE_BUTTON_RIGHT:
-            # Удаление башни
             hit_towers = arcade.get_sprites_at_point((x, y), self.towers_list)
             if hit_towers:
-                tower = hit_towers[0]
-                col = int((tower.center_x - GRID_START_X) // TILE_SIZE)
-                row = int((tower.center_y - GRID_START_Y) // TILE_SIZE)
-                if tower.unit_type == 'Metronome':
-                    self.metronome_count -= 1
-                self.grid[row][col] = 0
-                tower.remove_from_sprite_lists()
+                self._remove_tower(hit_towers[0])
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         if self.held_unit:
@@ -163,98 +330,155 @@ class CombatView(arcade.View):
         row = int((y - GRID_START_Y) // TILE_SIZE)
 
         if 0 <= col < GRID_COLS and 0 <= row < GRID_ROWS and self.grid[row][col] == 0:
-            self.held_unit.position = (GRID_START_X + col * TILE_SIZE + TILE_SIZE / 2,
-                                       GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2)
+            self.held_unit.position = (
+                GRID_START_X + col * TILE_SIZE + TILE_SIZE / 2,
+                GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2,
+            )
             self.held_unit.alpha = 255
             self.towers_list.append(self.held_unit)
             self.grid[row][col] = 1
             self.money -= self.held_unit.price
-            if self.held_unit.unit_type == 'Metronome':
-                self.metronome_count += 1
 
         self.held_unit = None
 
     def on_update(self, delta_time):
         self.money_label.text = f"Монеты: {self.money}"
+        self.wave_label.text = f"Волна: {self.wave}"
 
         if self.money > 500:
-            self.window.city_view = City()
-            self.window.city_view.setup()
-            self.window.show_view(self.window.city_view)
-        # Списки обновляются сами
+            city = City()
+            city.setup()
+            self.window.show_view(city)
+            return
+
+        self._resolve_enemy_attacks(delta_time)
+
+        for enemy in list(self.enemies_list):
+            enemy.move(delta_time)
+
+        for enemy in self.enemies_list:
+            enemy.blocked = False
+
         self.bullets_list.update()
-        self.enemies_list.update()
 
-        # Экономика
-        self.money_timer += delta_time
-        if self.money_timer >= 5:
-            if self.metronome_count > 0:
-                self.money += 10 * self.metronome_count
-            self.money_timer = 0
+        for effect in self.splash_effects:
+            effect.update(delta_time)
+        self.splash_effects = [e for e in self.splash_effects if e.alive]
 
-        # Спавн врагов
-        self.spawn_timer += delta_time
-        if self.spawn_timer >= 10:
-            ghost = Ghost()
-            ghost.position = (SCREEN_WIDTH, GRID_START_Y + random.randint(0, 4) * TILE_SIZE + TILE_SIZE / 2)
-            self.enemies_list.append(ghost)
-            self.spawn_timer = 0
+        self.wave_timer += delta_time
+        if self.wave_timer >= self.wave_interval:
+            self._spawn_wave()
+            self.wave += 1
+            self.wave_timer = 0.0
+            self.wave_interval = max(6.0, self.wave_interval - 1.0)
 
-        # Логика башен (Стрельба)
-        for tower in self.towers_list:
-            if tower.unit_type == 'Strings':
-                tower.timer += delta_time
-                if tower.timer >= 3:  # Стреляем раз в 3 сек
-                    bullet = Bullet(tower.center_x, tower.center_y, tower.bullet_speed, tower.bullet_damage)
-                    self.bullets_list.append(bullet)
-                    tower.timer = 0
+        self._update_towers(delta_time)
+        self._resolve_bullet_hits()
 
-        # Проверка карт (активны или нет)
         for card in self.cards_list:
-            card.alpha = 255 if self.money >= card.price else 100
+            card.alpha = 255 if self.money >= card.price else 160
 
-        # Коллизии: Пули -> Враги
-        for bullet in self.bullets_list:
-            hit_enemies = arcade.check_for_collision_with_list(bullet, self.enemies_list)
+    def _update_towers(self, delta_time):
+        for tower in self.towers_list:
+            fired = tower.tick(delta_time)
+
+            if tower.unit_type == "Metronome":
+                if fired:
+                    self.money += 10
+
+            elif tower.unit_type in ("Strings", "Bass"):
+                if fired and self._has_enemy_in_row(tower.center_y):
+                    self.bullets_list.append(
+                        Bullet(
+                            tower.center_x, tower.center_y,
+                            tower.bullet_speed, tower.bullet_damage,
+                        )
+                    )
+
+            elif tower.unit_type == "Drum":
+                if fired:
+                    self._drum_splash(tower)
+
+    def _resolve_bullet_hits(self):
+        for bullet in list(self.bullets_list):
+            hit_enemies = arcade.check_for_collision_with_list(
+                bullet, self.enemies_list
+            )
             if hit_enemies:
                 for enemy in hit_enemies:
-                    enemy.health -= bullet.damage
-                    if enemy.health <= 0:
-                        enemy.remove_from_sprite_lists()
-                        self.money += 15
+                    self._damage_enemy(enemy, bullet.damage)
                 bullet.remove_from_sprite_lists()
 
-        # Коллизии: Враги -> Башни (ИСПРАВЛЕНО)
-        for enemy in self.enemies_list:
-            if enemy.center_x < 100 and self.health > 0:
-                self.health -= 20
-                enemy.remove_from_sprite_lists()
-                self.health_label.text = f"Здоровье: {self.health}"
-                if self.health <= 0:
-                    self.window.city_view = City()
-                    self.window.city_view.setup()
-                    self.window.show_view(self.window.city_view)
+    def _resolve_enemy_attacks(self, delta_time):
+        for enemy in list(self.enemies_list):
             hit_towers = arcade.check_for_collision_with_list(enemy, self.towers_list)
-            if hit_towers:
-                # Враг останавливается
-                enemy.center_x += enemy.speed * delta_time  # Компенсируем движение назад, чтобы он стоял
+            if not hit_towers:
+                continue
 
-                target_tower = hit_towers[0]
+            enemy.blocked = True
 
-                if enemy.current_cooldown <= 0:
-                    target_tower.health -= enemy.damage
-                    enemy.current_cooldown = enemy.max_cooldown  # СБРОС ТАЙМЕРА
-                    print(f"Атака! У {target_tower.unit_type} осталось {target_tower.health} HP")
+            if enemy.current_cooldown > 0.0:
+                enemy.current_cooldown -= delta_time
+                continue
 
-                    if target_tower.health <= 0:
-                        if target_tower.unit_type == 'Metronome':
-                            self.metronome_count -= 1
+            target = hit_towers[0]
+            target.health -= enemy.damage
+            enemy.current_cooldown = enemy.max_cooldown
 
-                        # Освобождаем сетку
-                        t_col = int((target_tower.center_x - GRID_START_X) // TILE_SIZE)
-                        t_row = int((target_tower.center_y - GRID_START_Y) // TILE_SIZE)
-                        self.grid[t_row][t_col] = 0
+            if target.health <= 0:
+                self._destroy_tower(target)
 
-                        target_tower.remove_from_sprite_lists()
-                else:
-                    enemy.current_cooldown -= delta_time
+    def _spawn_wave(self):
+        row_indices = list(range(GRID_ROWS))
+        random.shuffle(row_indices)
+        count = 2 + self.wave
+
+        for i in range(count):
+            row = row_indices[i % GRID_ROWS]
+            y = GRID_START_Y + row * TILE_SIZE + TILE_SIZE / 2
+            x = SCREEN_WIDTH + random.randint(0, 200)
+            roll = random.random()
+
+            if self.wave >= 3 and roll < 0.25:
+                enemy = Banshee()
+            elif self.wave >= 2 and roll < 0.5:
+                enemy = Specter()
+            else:
+                enemy = Ghost()
+
+            enemy.position = (x, y)
+            self.enemies_list.append(enemy)
+
+    def _has_enemy_in_row(self, tower_y):
+        return any(
+            abs(e.center_y - tower_y) < ROW_TOLERANCE
+            for e in self.enemies_list
+        )
+
+    def _drum_splash(self, tower):
+        self.splash_effects.append(
+            SplashEffect(tower.center_x, tower.center_y, tower.splash_radius)
+        )
+        for enemy in list(self.enemies_list):
+            dx = enemy.center_x - tower.center_x
+            dy = enemy.center_y - tower.center_y
+            if (dx * dx + dy * dy) ** 0.5 <= tower.splash_radius:
+                self._damage_enemy(enemy, tower.splash_damage)
+
+    def _damage_enemy(self, enemy, damage):
+        if enemy not in self.enemies_list:
+            return
+        enemy.health -= damage
+        if enemy.health <= 0:
+            self.money += ENEMY_REWARDS.get(enemy.unit_type, 15)
+            enemy.remove_from_sprite_lists()
+
+    def _remove_tower(self, tower):
+        col = int((tower.center_x - GRID_START_X) // TILE_SIZE)
+        row = int((tower.center_y - GRID_START_Y) // TILE_SIZE)
+        if 0 <= row < GRID_ROWS and 0 <= col < GRID_COLS:
+            self.grid[row][col] = 0
+        tower.remove_from_sprite_lists()
+
+    def _destroy_tower(self, tower):
+        self._remove_tower(tower)
