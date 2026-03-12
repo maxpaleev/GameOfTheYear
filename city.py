@@ -21,7 +21,6 @@ def load_dialogues():
         return json.load(file)
 
 
-# Загружаем всё в одну переменную
 ALL_DIALOGUES = load_dialogues()
 
 
@@ -79,41 +78,59 @@ class Player(arcade.Sprite):
 
 
 class NPC(arcade.Sprite):
-    def __init__(self, unite_type, image, dialogue_script, scale=1):
+    def __init__(self, name, image, dialogue_script, scale=1):
         super().__init__(image, scale)
-        self.unite_type = unite_type
+        self.name = name
         self.dialogue_script = dialogue_script
-        self.dialogue_started = False
+        self.dialogue_index = 0
+        self.in_interaction_zone = False
+
+    def start_dialogue(self):
+        self.dialogue_index = 0
+
+    def get_current_line(self):
+        return self.dialogue_script[self.dialogue_index]
+
+    def advance_dialogue(self):
+        self.dialogue_index += 1
+        if self.dialogue_index >= len(self.dialogue_script):
+            self.on_dialogue_end()
+            return False
+        return True
+
+    def on_dialogue_end(self):
+        pass
 
 
 class Granma(NPC):
     def __init__(self):
-        script = ALL_DIALOGUES["granma_quest"]
-        super().__init__("Granma", "resurses/grandma.png", script, scale=0.1)
+        super().__init__("Granma", "resurses/grandma.png", ALL_DIALOGUES["granma_quest"], scale=0.1)
         self.center_x = SCREEN_WIDTH // 2 - 100
         self.center_y = SCREEN_HEIGHT // 2 + 150
 
 
 class Military(NPC):
-    def __init__(self):
-        script = ALL_DIALOGUES["military_quest"]
-        super().__init__("Military", 'resurses/military.jpg', script, scale=0.2)
+    def __init__(self, on_complete_callback=None):
+        super().__init__("Military", 'resurses/military.jpg', ALL_DIALOGUES["military_quest"], scale=0.2)
         self.center_x = SCREEN_WIDTH // 2 + 1100
         self.center_y = SCREEN_HEIGHT // 2 + 300
+        self.on_complete = on_complete_callback
+
+    def on_dialogue_end(self):
+        if self.on_complete:
+            self.on_complete()
 
 
 class Mechanic(NPC):
     def __init__(self):
-        script = ALL_DIALOGUES["mechanic_quest"]
-        super().__init__("Mechanic", 'resurses/mechanic.png', script, scale=0.2)
+        super().__init__("Mechanic", 'resurses/mechanic.png', ALL_DIALOGUES["mechanic_quest"], scale=0.2)
         self.center_x = SCREEN_WIDTH // 2 + 700
         self.center_y = SCREEN_HEIGHT // 2 + 100
 
 
 class Governor(NPC):
     def __init__(self):
-        script = ALL_DIALOGUES["governor_quest"]
-        super().__init__("Governor", 'resurses/governor.png', script, scale=0.6)
+        super().__init__("Governor", 'resurses/governor.png', ALL_DIALOGUES["governor_quest"], scale=0.6)
         self.center_x = SCREEN_WIDTH // 2 - 250
         self.center_y = SCREEN_HEIGHT // 2 + 60
 
@@ -143,10 +160,7 @@ class City(arcade.View):
         self.world_width = world_width
         self.world_height = world_height
 
-        self.is_dialogue_active = False
-        self.current_dialogue = None
-        self.dialogue_index = 0
-        self.next_lvl = False
+        self.active_npc = None
 
         self.batch = Batch()
 
@@ -180,7 +194,7 @@ class City(arcade.View):
         self.player_list.append(self.player)
 
         self.NPC_list.append(Granma())
-        self.NPC_list.append(Military())
+        self.NPC_list.append(Military(on_complete_callback=self.start_combat))
         self.NPC_list.append(Mechanic())
         self.NPC_list.append(Governor())
         musik = arcade.load_sound('resurses/ost.mp3')
@@ -193,6 +207,12 @@ class City(arcade.View):
         self.speakers_list.append(self.speaker_2)
         self.keys_pressed = set()
 
+    def start_combat(self):
+        from fight import CombatView
+        self.window.combat_view = CombatView()
+        self.window.combat_view.setup()
+        self.window.show_view(self.window.combat_view)
+
     def on_draw(self):
         self.clear()
         self.world_camera.use()
@@ -204,19 +224,19 @@ class City(arcade.View):
 
         self.gui_camera.use()
 
-        if self.is_dialogue_active:
+        if self.active_npc:
             arcade.draw_lrbt_rectangle_filled(50, 950, 20, 150, arcade.color.BLACK_OLIVE)
             arcade.draw_lrbt_rectangle_outline(50, 950, 20, 150, arcade.color.WHITE, 2)
 
-            line = self.current_dialogue[self.dialogue_index]
+            line = self.active_npc.get_current_line()
             self.text_object_name.text = line["name"]
             self.text_object_text.text = line["text"]
             self.batch.draw()
 
     def on_update(self, delta_time):
-        self.player_list.update_animation()
-        if self.is_dialogue_active:
+        if self.active_npc:
             return
+        self.player_list.update_animation()
         self.player_list.update(delta_time, self.keys_pressed)
         cam_x, cam_y = self.world_camera.position
         dz_left = cam_x - DEAD_ZONE_W // 2
@@ -249,14 +269,14 @@ class City(arcade.View):
 
         for npc in self.NPC_list:
             if arcade.check_for_collision(self.player, npc):
-                if not npc.dialogue_started:
-                    self.start_dialogue(npc.dialogue_script)
-                    npc.dialogue_started = True
-                    if npc.unite_type == "Military":
-                        self.next_lvl = True
+                if not npc.in_interaction_zone:
+                    npc.in_interaction_zone = True
+                    npc.start_dialogue()
+                    self.active_npc = npc
                 break
             else:
-                npc.dialogue_started = False
+                npc.in_interaction_zone = False
+
         for speaker in self.speakers_list:
             dist = arcade.get_distance_between_sprites(self.player, speaker)
 
@@ -268,24 +288,13 @@ class City(arcade.View):
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
 
-        if self.is_dialogue_active:
+        if self.active_npc:
             if key == arcade.key.SPACE:
-                self.dialogue_index += 1
-                if self.dialogue_index >= len(self.current_dialogue):
-                    self.is_dialogue_active = False
-                    if self.next_lvl:
-                        self.next_lvl = False
-                        from fight import CombatView
-                        self.window.combat_view = CombatView()
-                        self.window.combat_view.setup()
-                        self.window.show_view(self.window.combat_view)
+                if not self.active_npc.advance_dialogue():
+                    self.active_npc = None
             return
 
     def on_key_release(self, key, modifiers):
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
 
-    def start_dialogue(self, dialogue_list):
-        self.current_dialogue = dialogue_list
-        self.dialogue_index = 0
-        self.is_dialogue_active = True
