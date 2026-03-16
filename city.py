@@ -123,7 +123,7 @@ class NPC(arcade.Sprite):
             self.dialogue_index = 0
         else:
             self.dialogue_index = 0
-            self.dialogue_script = ALL_DIALOGUES['default_quest']
+            self.dialogue_script = ALL_DIALOGUES['default_quest1']
 
     def get_current_line(self):
         return self.dialogue_script[self.dialogue_index]
@@ -170,10 +170,17 @@ class Granma(NPC):
                 self.current_texture = 0
             self.texture = self.animate_textures[self.current_texture]
 
+'''
+class Elin_call(NPC):
+    def __init__(self):
+        super().__init__("Elin_call", 'resurses/NPC/Empty.png', ALL_DIALOGUES["Elin_call"], scale=0.1)
+        self.center_x = SCREEN_WIDTH // 2
+        self.center_y = SCREEN_HEIGHT // 2
+'''
 
 class Elin(NPC):
     def __init__(self, on_complete_callback=None):
-        super().__init__("Elin", 'resurses/NPC/Elin.png', ALL_DIALOGUES["Elin_quest"], scale=0.1)
+        super().__init__("Elin", 'resurses/NPC/Elin.png', ALL_DIALOGUES["Elin_visit"], scale=0.1)
         self.center_x = SCREEN_WIDTH // 2 + 1100
         self.center_y = SCREEN_HEIGHT // 2 + 300
         self.on_complete = on_complete_callback
@@ -272,6 +279,7 @@ class City(arcade.View):
         self.player_list.append(self.player)
 
         self.NPC_list.append(Granma())
+        #self.NPC_list.append(Elin_call())
         self.NPC_list.append(Elin(on_complete_callback=self.start_combat))
         self.NPC_list.append(Mechanic())
         self.NPC_list.append(Governor())
