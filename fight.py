@@ -23,9 +23,9 @@ LEVEL = cursor.execute(query).fetchone()[2]
 
 CARD_INFO = [
     {"name": "Метроном", "hint": "каждые 5 сек +10 монет", "price": 10, "pos": (80, 490)},
-    {"name": "Струны",   "hint": "50 ур / 3 сек, 1 ряд",   "price": 50, "pos": (80, 370)},
-    {"name": "Бас",      "hint": "20 ур / 1 сек, быстро",  "price": 30, "pos": (80, 250)},
-    {"name": "Барабан",  "hint": "30 ур / 5 сек, AOE",     "price": 75, "pos": (80, 130)},
+    {"name": "Струны", "hint": "50 ур / 3 сек, 1 ряд", "price": 50, "pos": (80, 370)},
+    {"name": "Бас", "hint": "20 ур / 1 сек, быстро", "price": 30, "pos": (80, 250)},
+    {"name": "Барабан", "hint": "30 ур / 5 сек, AOE", "price": 75, "pos": (80, 130)},
 ]
 
 CARD_H = 110
@@ -35,6 +35,7 @@ CARD_ICON_OFFSET = 28
 CARD_TEXT_OFFSET_NAME = -22
 CARD_TEXT_OFFSET_HINT = -38
 CARD_TEXT_OFFSET_PRICE = -54
+MISS_ENEMY = 0
 
 
 class SplashEffect:
@@ -132,10 +133,12 @@ class Enemy(arcade.Sprite):
         self.blocked = False
 
     def move(self, delta_time):
+        global MISS_ENEMY
         if not self.blocked:
             self.center_x -= self.speed * delta_time
         if self.right < 0:
             self.remove_from_sprite_lists()
+            MISS_ENEMY += 1
 
 
 class Ghost(Enemy):
@@ -182,6 +185,7 @@ class Bullet(arcade.Sprite):
 class CombatView(arcade.View):
     def __init__(self):
         super().__init__()
+        self.keys_pressed = set()
         self.background = arcade.load_texture("resurses/pol.png")
 
         self.cards_list = arcade.SpriteList()
@@ -216,6 +220,11 @@ class CombatView(arcade.View):
 
     def on_draw(self):
         self.clear()
+        if MISS_ENEMY >= 1:
+            arcade.set_background_color(arcade.color.BLACK)
+            arcade.draw_text('Вы проиграли!', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2, arcade.color.WHITE, 40)
+            arcade.draw_text('Чтобы вернуться в город, нажмите [R]', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50, arcade.color.WHITE, 20)
+            return
         arcade.draw_texture_rect(
             self.background,
             arcade.rect.XYWH(
@@ -282,7 +291,7 @@ class CombatView(arcade.View):
 
             divider_y = cy + CARD_TEXT_OFFSET_NAME + 16
             arcade.draw_lrbt_rectangle_filled(
-                CARD_X + 4 +8, CARD_X  - 8 + CARD_W - 4,
+                CARD_X + 4 + 8, CARD_X - 8 + CARD_W - 4,
                 divider_y, divider_y + 1,
                 (90, 90, 90, 180),
             )
@@ -360,6 +369,12 @@ class CombatView(arcade.View):
             cursor.execute(query)
             db.commit()
             return
+        if MISS_ENEMY >= 1:
+            if arcade.key.R in self.keys_pressed:
+                city = City()
+                city.setup()
+                self.window.show_view(city)
+                return
 
         self._resolve_enemy_attacks(delta_time)
 
@@ -387,6 +402,13 @@ class CombatView(arcade.View):
 
         for card in self.cards_list:
             card.alpha = 255 if self.money >= card.price else 160
+
+    def on_key_press(self, key, modifiers):
+        self.keys_pressed.add(key)
+
+    def on_key_release(self, key, modifiers):
+        if key in self.keys_pressed:
+            self.keys_pressed.remove(key)
 
     def _update_towers(self, delta_time):
         for tower in self.towers_list:

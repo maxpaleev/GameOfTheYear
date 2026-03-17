@@ -22,6 +22,7 @@ cursor = db.cursor()
 query = "SELECT * FROM player"
 player = cursor.execute(query).fetchone()
 RADIOS = player[1]
+Level = player[2]
 Granma, Military, Mechanic, Governor, Elin_call = player[3:]
 NPC_uni = {'Granma': Granma, 'Elin': Military, 'Mechanic': Mechanic, 'Governor': Governor, 'Elin_call': Elin_call}
 
@@ -322,6 +323,11 @@ class City(arcade.View):
     def on_draw(self):
         self.clear()
         self.world_camera.use()
+        if Level >= 1:
+            arcade.set_background_color(arcade.color.BLACK)
+            arcade.draw_text('Вы победили', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2, arcade.color.WHITE, 40)
+            arcade.draw_text('Чтобы начать заново удалите файл "game.db"', SCREEN_WIDTH // 2 - 250, SCREEN_HEIGHT // 2 - 50, arcade.color.WHITE, 20)
+            return
         arcade.draw_texture_rect(self.background,
                                  arcade.rect.XYWH(world_width // 2, world_height // 2, world_width, world_height))
         self.player_list.draw()
