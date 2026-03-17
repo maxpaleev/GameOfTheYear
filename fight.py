@@ -22,10 +22,10 @@ query = "SELECT * FROM player"
 LEVEL = cursor.execute(query).fetchone()[2]
 
 CARD_INFO = [
-    {"name": "Метроном", "hint": "каждые 5 сек +10 монет", "price": 10, "pos": (80, 490)},
-    {"name": "Струны", "hint": "50 ур / 3 сек, 1 ряд", "price": 50, "pos": (80, 370)},
-    {"name": "Бас", "hint": "20 ур / 1 сек, быстро", "price": 30, "pos": (80, 250)},
-    {"name": "Барабан", "hint": "30 ур / 5 сек, AOE", "price": 75, "pos": (80, 130)},
+    {"name": "Метроном", "hint": "каждые 5 сек +10 монет", "price": 10, "pos": (80, 490), "scale": 0.1},
+    {"name": "Струны", "hint": "50 ур / 3 сек, 1 ряд", "price": 50, "pos": (80, 370), "scale": 0.1},
+    {"name": "Бас", "hint": "20 ур / 1 сек, быстро", "price": 30, "pos": (80, 250), "scale": 0.1},
+    {"name": "Барабан", "hint": "30 ур / 5 сек, AOE", "price": 75, "pos": (80, 130), "scale": 0.2},
 ]
 
 CARD_H = 110
@@ -113,7 +113,7 @@ class Bass(Unit):
 class Drum(Unit):
     def __init__(self):
         super().__init__(
-            "Drum", "resurses/Units/metronome.png", price=75, health=150, scale=0.1
+            "Drum", "resurses/Units/drum.png", price=75, health=150, scale=0.2
         )
         self.splash_damage = 30
         self.fire_rate = 5.0
@@ -185,6 +185,7 @@ class Bullet(arcade.Sprite):
 class CombatView(arcade.View):
     def __init__(self):
         super().__init__()
+        self.musik = arcade.load_sound('resurses/ost_pvz.mp3')
         self.keys_pressed = set()
         self.background = arcade.load_texture("resurses/pol.png")
 
@@ -193,6 +194,8 @@ class CombatView(arcade.View):
         self.bullets_list = arcade.SpriteList()
         self.enemies_list = arcade.SpriteList()
         self.splash_effects = []
+
+        self.miss_enemy = 0
 
         self.money = 150
         self.wave = 1
@@ -211,21 +214,24 @@ class CombatView(arcade.View):
 
     def setup(self):
         classes = [Metronome, Strings, Bass, Drum]
+        self.musik_player = arcade.play_sound(self.musik, loop=True)
+
         for cls, info in zip(classes, CARD_INFO):
             card = cls()
-            card.scale = 0.1
+            card.scale = info["scale"]
             cx, cy = info["pos"]
             card.position = (cx, cy + CARD_ICON_OFFSET)
             self.cards_list.append(card)
 
     def on_draw(self):
         self.clear()
+        global MISS_ENEMY
         if MISS_ENEMY >= 1:
             arcade.set_background_color(arcade.color.BLACK)
             arcade.draw_text('Вы проиграли!', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2, arcade.color.WHITE, 40)
             arcade.draw_text('Чтобы вернуться в город, нажмите [R]', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50, arcade.color.WHITE, 20)
             return
-        if LEVEL >= 1:
+        if self.money >= 500:
             arcade.set_background_color(arcade.color.BLACK)
             arcade.draw_text('Вы победили', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2, arcade.color.WHITE, 40)
             arcade.draw_text('Чтобы вернуться в город, нажмите [R]', SCREEN_WIDTH // 2 - 250,
@@ -374,12 +380,15 @@ class CombatView(arcade.View):
             cursor.execute(query)
             db.commit()
             if arcade.key.R in self.keys_pressed:
+                arcade.stop_sound(self.musik_player)
+                self.money = 0
                 city = City()
                 city.setup()
                 self.window.show_view(city)
                 return
         if MISS_ENEMY >= 1:
             if arcade.key.R in self.keys_pressed:
+                arcade.stop_sound(self.musik_player)
                 city = City()
                 city.setup()
                 self.window.show_view(city)

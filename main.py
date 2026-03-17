@@ -32,7 +32,6 @@ else:
     db.commit()
     RADIOS, LEVELS = cursor.execute('SELECT * FROM player').fetchone()[1:3]
 db.close()
-print(RADIOS, LEVELS)
 
 
 from fight import CombatView
