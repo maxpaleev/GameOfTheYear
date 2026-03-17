@@ -225,6 +225,12 @@ class CombatView(arcade.View):
             arcade.draw_text('Вы проиграли!', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2, arcade.color.WHITE, 40)
             arcade.draw_text('Чтобы вернуться в город, нажмите [R]', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50, arcade.color.WHITE, 20)
             return
+        if LEVEL >= 1:
+            arcade.set_background_color(arcade.color.BLACK)
+            arcade.draw_text('Вы победили', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2, arcade.color.WHITE, 40)
+            arcade.draw_text('Чтобы вернуться в город, нажмите [R]', SCREEN_WIDTH // 2 - 250,
+                             SCREEN_HEIGHT // 2 - 50, arcade.color.WHITE, 20)
+            return
         arcade.draw_texture_rect(
             self.background,
             arcade.rect.XYWH(
@@ -362,13 +368,16 @@ class CombatView(arcade.View):
         self.wave_label.text = f"Волна: {self.wave}"
 
         if self.money > 500:
-            city = City()
-            city.setup()
-            self.window.show_view(city)
+            global LEVEL
+            LEVEL += 1
             query = 'UPDATE player SET levels = levels + 1'
             cursor.execute(query)
             db.commit()
-            return
+            if arcade.key.R in self.keys_pressed:
+                city = City()
+                city.setup()
+                self.window.show_view(city)
+                return
         if MISS_ENEMY >= 1:
             if arcade.key.R in self.keys_pressed:
                 city = City()
