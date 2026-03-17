@@ -20,7 +20,8 @@ query = '''
                Granma BOOLEAN DEFAULT FALSE,
                Elin BOOLEAN DEFAULT FALSE,
                Mechanic BOOLEAN DEFAULT FALSE,
-               Governor BOOLEAN DEFAULT FALSE
+               Governor BOOLEAN DEFAULT FALSE,
+               Elin_call BOOLEAN DEFAULT FALSE
            ) '''
 cursor.execute(query)
 db.commit()

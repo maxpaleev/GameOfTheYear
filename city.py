@@ -1,5 +1,7 @@
 import enum
 import sqlite3
+from multiprocessing.spawn import set_executable
+
 import arcade
 import json
 from pyglet.graphics import Batch
@@ -20,8 +22,8 @@ cursor = db.cursor()
 query = "SELECT * FROM player"
 player = cursor.execute(query).fetchone()
 RADIOS = player[1]
-Granma, Military, Mechanic, Governor = player[3:]
-NPC_uni = {'Granma': Granma, 'Elin': Military, 'Mechanic': Mechanic, 'Governor': Governor}
+Granma, Military, Mechanic, Governor, Elin_call = player[3:]
+NPC_uni = {'Granma': Granma, 'Elin': Military, 'Mechanic': Mechanic, 'Governor': Governor, 'Elin_call': Elin_call}
 
 
 def load_dialogues():
@@ -113,17 +115,28 @@ class NPC(arcade.Sprite):
     def __init__(self, name, image, dialogue_script, scale=1):
         super().__init__(image, scale)
         self.name = name
+        self.default_dialogue = dialogue_script
         self.dialogue_script = dialogue_script
         self.dialogue_index = 0
         self.in_interaction_zone = False
         self.unique = not NPC_uni[name]
 
     def start_dialogue(self):
-        if self.unique:
+        if self.unique and NPC_uni['Elin']:
             self.dialogue_index = 0
+            self.dialogue_script = self.default_dialogue
+        elif self.unique and not NPC_uni['Elin']:
+            self.dialogue_index = 0
+            if self.name == 'Elin':
+                return
+            if self.name != 'Elin_call':
+                self.dialogue_script = ALL_DIALOGUES['default_quest1']
         else:
             self.dialogue_index = 0
-            self.dialogue_script = ALL_DIALOGUES['default_quest1']
+            if self.name == 'Elin' and all(NPC_uni.values()):
+                self.dialogue_script = ALL_DIALOGUES['Elin_quest']
+                return
+            self.dialogue_script = ALL_DIALOGUES['default_quest2']
 
     def get_current_line(self):
         return self.dialogue_script[self.dialogue_index]
@@ -141,6 +154,8 @@ class NPC(arcade.Sprite):
     def get_radio(self):
         global RADIOS
         name = self.name
+        NPC_uni[name] = True
+        self.unique = False
         query = f"UPDATE player SET {name} = ?, radios = radios + 1 "
         cursor.execute(query, (True,))
         RADIOS += 1
@@ -170,13 +185,16 @@ class Granma(NPC):
                 self.current_texture = 0
             self.texture = self.animate_textures[self.current_texture]
 
-'''
+
 class Elin_call(NPC):
     def __init__(self):
         super().__init__("Elin_call", 'resurses/NPC/Empty.png', ALL_DIALOGUES["Elin_call"], scale=0.1)
         self.center_x = SCREEN_WIDTH // 2
         self.center_y = SCREEN_HEIGHT // 2
-'''
+
+    def on_dialogue_end(self):
+        self.remove_from_sprite_lists()
+
 
 class Elin(NPC):
     def __init__(self, on_complete_callback=None):
@@ -186,7 +204,7 @@ class Elin(NPC):
         self.on_complete = on_complete_callback
 
     def on_dialogue_end(self):
-        if self.on_complete:
+        if self.on_complete and all(NPC_uni.values()):
             self.on_complete()
 
 
@@ -279,7 +297,9 @@ class City(arcade.View):
         self.player_list.append(self.player)
 
         self.NPC_list.append(Granma())
-        #self.NPC_list.append(Elin_call())
+        El =(NPC_uni['Elin_call'])
+        if not El:
+            self.NPC_list.append(Elin_call())
         self.NPC_list.append(Elin(on_complete_callback=self.start_combat))
         self.NPC_list.append(Mechanic())
         self.NPC_list.append(Governor())
@@ -360,7 +380,12 @@ class City(arcade.View):
                     npc.in_interaction_zone = True
                     npc.start_dialogue()
                     self.active_npc = npc
-                    if npc.unique:
+                    if npc.name == 'Elin_call':
+                        self.player.texture = arcade.load_texture('resurses/hero/herop.png')
+                        npc.get_radio()
+                    if npc.unique and npc.name == 'Elin':
+                        npc.get_radio()
+                    if npc.unique and NPC_uni['Elin']:
                         npc.get_radio()
                 break
             else:
@@ -380,7 +405,7 @@ class City(arcade.View):
         if self.active_npc:
             if key == arcade.key.SPACE:
                 if not self.active_npc.advance_dialogue():
-                    self.active_npc.unique = False
+                    # self.active_npc.unique = False
                     self.active_npc = None
             return
 
